@@ -1,0 +1,38 @@
+body {
+  margin: 0;
+  font-family: 'Segoe UI', Arial, sans-serif;
+  background: #181818;
+  color: #fff;
+}
+
+:root {
+  --gold: #FFD700;
+  --white: #fff;
+  --black: #181818;
+  --dark-grey: #232323;
+}
+
+/* Gold trimmings for headers and borders */
+h1, h2, h3, th {
+  color: var(--gold);
+}
+
+.table-metrics {
+  border: 2px solid var(--gold);
+  background: var(--dark-grey);
+  color: var(--white);
+}
+
+.button-gold {
+  background: var(--gold);
+  color: var(--black);
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.button-gold:hover {
+  background: #e6c200;
+}
