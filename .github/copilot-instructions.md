@@ -1,4 +1,4 @@
-- [x] Scaffold React + Firebase project
+- [ ] Scaffold React + Firebase project
 - [ ] Set up Firebase integration
 - [ ] Implement admin dashboard
 - [ ] Implement stylist dashboard

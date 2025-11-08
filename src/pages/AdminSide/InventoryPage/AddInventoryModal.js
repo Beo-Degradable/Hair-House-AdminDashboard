@@ -1,0 +1,214 @@
+import React, { useState, useEffect } from 'react';
+import { collection, addDoc, serverTimestamp, doc, updateDoc, getDoc } from 'firebase/firestore';
+import { db } from '../../../firebase';
+import ValidatedInput from '../../../components/ValidatedInput';
+import { validateForm } from '../../../utils/validators';
+
+const AddInventoryModal = ({ open, onClose, onAdded, products = [], branches = [] }) => {
+  // We'll collect quantities per branch via buttons + inputs
+  const branchMap = [
+    { id: 'B001', name: 'Vergara' },
+    { id: 'B002', name: 'Lawas' },
+    { id: 'B003', name: 'Lipa' },
+    { id: 'B004', name: 'Tanauan' },
+  ];
+
+  const [branchQuantities, setBranchQuantities] = useState(() => {
+    const init = {};
+    branchMap.forEach(b => { init[b.id] = ''; });
+    return init;
+  });
+  const [activeBranchId, setActiveBranchId] = useState(null);
+  const [name, setName] = useState('');
+  const [brand, setBrand] = useState('');
+  const [category, setCategory] = useState('');
+  const [cost, setCost] = useState('');
+  const [price, setPrice] = useState('');
+  const [unit, setUnit] = useState('');
+  const [loading, setLoading] = useState(false);
+
+
+  // when the modal opens or products update, we could prefill by name if desired
+  useEffect(() => {
+    // noop - keeping the hook count stable. Prefill is done from the Name input only.
+  }, [products]);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    const v = validateForm(e.target);
+    if (!v.ok) { alert(v.message || 'Invalid input'); return; }
+    setLoading(true);
+    try {
+      // prefer the Name input; must provide a product name
+      const nameInput = name && String(name).trim();
+      if (!nameInput) throw new Error('Enter product name');
+      // build list of writes for branches with quantities
+      const createdIds = [];
+      for (const b of branchMap) {
+        const raw = branchQuantities[b.id];
+        const qty = Number(raw || 0);
+        if (!isNaN(qty) && qty > 0) {
+          const data = {
+            productName: nameInput || null,
+            brand: brand || null,
+            category: category || null,
+            unit: unit || null,
+            cost: cost ? Number(cost) : null,
+            price: price ? Number(price) : null,
+            branchId: b.id,
+            branchName: b.name,
+            quantity: qty,
+            lastUpdated: serverTimestamp(),
+          };
+          console.log('[AddInventoryModal] writing inventory record for', b.id, data);
+          const ref = await addDoc(collection(db, 'inventory'), data);
+          createdIds.push(ref.id);
+          // history entry for inventory create
+          try { await logHistory({ action: 'create', collection: 'inventory', docId: ref.id, before: null, after: data }); } catch (hh) { console.warn('Failed to write history for inventory create', hh); }
+        }
+      }
+
+      if (createdIds.length === 0) throw new Error('Enter quantity for at least one branch');
+
+      // aggregate total quantity across branches we just wrote
+      const totalAdded = Object.values(branchQuantities).reduce((s, v) => s + (Number(v || 0) || 0), 0);
+      try {
+        // try to find an existing product by exact name (case-insensitive) or sku match from the passed `products` prop
+        const existing = (products || []).find(p => (p.name && String(p.name).toLowerCase() === String(nameInput).toLowerCase()) || (p.sku && p.sku === nameInput));
+          if (existing && existing.id) {
+          // update existing product: increment quantity by totalAdded and set other fields (exclude branch info)
+          const prodRef = doc(db, 'products', existing.id);
+          const currentQty = Number(existing.quantity || 0);
+          const newQty = currentQty + totalAdded;
+          await updateDoc(prodRef, {
+            name: nameInput,
+            brand: brand || existing.brand || null,
+            category: category || existing.category || null,
+            unit: unit || existing.unit || null,
+            cost: cost ? Number(cost) : (existing.cost || null),
+            price: price ? Number(price) : (existing.price || null),
+            quantity: newQty,
+            lastUpdated: serverTimestamp(),
+          });
+          console.log('[AddInventoryModal] updated existing product', existing.id, 'newQty', newQty);
+            // history for product update (before/after)
+            try {
+              const prodRef = doc(db, 'products', existing.id);
+              const prev = existing;
+              try { await logHistory({ action: 'update', collection: 'products', docId: existing.id, before: prev, after: { ...prev, quantity: newQty } }); } catch (hh) { console.warn('Failed to write history for product update', hh); }
+            } catch (hh) { console.warn('Failed to write history for product update', hh); }
+          } else {
+          // create a new product document (no branch info) with the aggregated quantity
+          const prodData = {
+            name: nameInput,
+            brand: brand || null,
+            category: category || null,
+            unit: unit || null,
+            cost: cost ? Number(cost) : null,
+            price: price ? Number(price) : null,
+            quantity: totalAdded,
+            createdAt: serverTimestamp(),
+            lastUpdated: serverTimestamp(),
+          };
+          const prodRef = await addDoc(collection(db, 'products'), prodData);
+          console.log('[AddInventoryModal] created product', prodRef.id);
+          try { await logHistory({ action: 'create', collection: 'products', docId: prodRef.id, before: null, after: prodData }); } catch (hh) { console.warn('Failed to write history for product create', hh); }
+        }
+      } catch (err) {
+        console.error('Failed to upsert product document', err);
+        // don't fail the whole operation — inventory docs were created; notify developer
+      }
+
+      // call onAdded with array of ids for callers that want them
+      onAdded && onAdded(createdIds);
+      onClose && onClose();
+    } catch (err) {
+      console.error('add inventory error', err);
+      alert('Failed to add inventory: ' + (err.message || err));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div style={{ display: open ? 'block' : 'none' }}>
+      <div style={{ position: 'fixed', left: 0, top: 0, right: 0, bottom: 0, background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+  <form className="modal-form" onSubmit={handleSubmit} style={{ background: 'var(--surface, #232323)', color: 'var(--text-primary, #fff)', padding: 20, borderRadius: 8, width: 'min(360px, 92%)', border: '1px solid var(--border-main)' }}>
+          <h3 style={{ marginTop: 0 }}>Add Inventory Record</h3>
+          {/* Product dropdown removed - using Name input to find/create products */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+            <div>
+              <label style={{ display: 'block', fontSize: 12 }}>Name</label>
+              <ValidatedInput value={name} onChange={v => setName(sanitizeName(v))} style={{ width: '80%', padding: 8, background: 'var(--surface)', border: '1px solid var(--border-main)', color: 'var(--text-primary)' }} />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: 12 }}>Brand</label>
+              <ValidatedInput value={brand} onChange={v => setBrand(sanitizeName(v))} style={{ width: '80%', padding: 8, background: 'var(--surface)', border: '1px solid var(--border-main)', color: 'var(--text-primary)' }} />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: 12 }}>Category</label>
+              <ValidatedInput value={category} onChange={v => setCategory(sanitizeName(v))} style={{ width: '80%', padding: 8, background: 'var(--surface)', border: '1px solid var(--border-main)', color: 'var(--text-primary)' }} />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: 12 }}>Unit</label>
+              <select value={unit} onChange={e => setUnit(e.target.value)} style={{ width: '92%', padding: 8, background: 'var(--surface)', border: '1px solid var(--border-main)', color: 'var(--text-primary)' }}>
+                <option value=''>-- select unit --</option>
+                <option value='Bottle'>Bottle</option>
+                <option value='Pouch'>Pouch</option>
+                <option value='Box'>Box</option>
+                <option value='Piece'>Piece</option>
+              </select>
+            </div>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 8 }}>
+            <div>
+              <label style={{ display: 'block', fontSize: 12 }}>Cost</label>
+              <ValidatedInput type='number' integer={false} value={cost} onChange={v => setCost(v)} style={{ width: '80%', padding: 8, background: 'var(--surface)', border: '1px solid var(--border-main)', color: 'var(--text-primary)' }} />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: 12 }}>Price</label>
+              <ValidatedInput type='number' integer={false} value={price} onChange={v => setPrice(v)} style={{ width: '80%', padding: 8, background: 'var(--surface)', border: '1px solid var(--border-main)', color: 'var(--text-primary)' }} />
+            </div>
+          </div>
+          <div style={{ marginBottom: 8 }}>
+            <label style={{ display: 'block', fontSize: 12 }}>Branch quantities</label>
+                <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+              {branchMap.map(b => (
+                <button
+                  key={b.id}
+                  type='button'
+                  onClick={() => setActiveBranchId(b.id)}
+                  style={{
+                    padding: '8px 12px',
+                    borderRadius: 8,
+                    border: activeBranchId === b.id ? '2px solid var(--btn-bg)' : '1px solid var(--border-main)',
+                    background: activeBranchId === b.id ? 'var(--btn-bg)' : 'var(--surface)',
+                    color: activeBranchId === b.id ? 'var(--white)' : 'var(--text-primary, inherit)'
+                  }}
+                >
+                  {b.name}
+                </button>
+              ))}
+            </div>
+            <div style={{ marginTop: 10 }}>
+              {activeBranchId ? (
+                <div>
+                  <div style={{ fontSize: 13, marginBottom: 6 }}>Quantity for {branchMap.find(b => b.id === activeBranchId).name}</div>
+                  <ValidatedInput type='number' integer={false} value={branchQuantities[activeBranchId]} onChange={v => setBranchQuantities(prev => ({ ...prev, [activeBranchId]: v }))} style={{ width: '100%', padding: 8, background: 'var(--surface)', border: '1px solid var(--border-main)', color: 'var(--text-primary)' }} />
+                </div>
+              ) : (
+                <div style={{ color: '#6b7280', fontSize: 13 }}>Select a branch to enter quantity</div>
+              )}
+            </div>
+          </div>
+          <div className="modal-actions" style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+            <button type="button" onClick={onClose} disabled={loading} style={{ padding: '8px 12px' }}>Cancel</button>
+            <button type="submit" disabled={loading} className="button-gold-dark" style={{ padding: '8px 12px' }}>{loading ? 'Adding...' : 'Add'}</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+export default AddInventoryModal;

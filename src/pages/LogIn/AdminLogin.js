@@ -1,7 +1,7 @@
 
-import React, { useState } from "react";
+import React, { useState, useContext } from "react";
 import "./AdminLogin.css";
-import { auth, db } from "./firebase";
+import { auth, db } from "../../firebase";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { collection, query, where, getDocs } from "firebase/firestore";
 
@@ -20,12 +20,16 @@ const RippleBackground = () => (
 );
 
 
+import { AuthContext } from "../../context/AuthContext";
+import { validateForm } from '../../utils/validators';
+
 const AdminLogin = ({ onLogin }) => {
 	const [email, setEmail] = useState("");
 	const [password, setPassword] = useState("");
 	const [showPassword, setShowPassword] = useState(false);
 	const [error, setError] = useState("");
 	const [loading, setLoading] = useState(false);
+    const { setUser } = useContext(AuthContext);
 
 	// Email validation: allow only valid email characters
 	const handleEmailChange = (e) => {
@@ -52,6 +56,9 @@ const AdminLogin = ({ onLogin }) => {
 		const handleSubmit = async (e) => {
 			e.preventDefault();
 			setError("");
+			// quick form validation
+			const v = validateForm(e.target);
+			if (!v.ok) { setError(v.message || 'Invalid input'); return; }
 			setLoading(true);
 			try {
 				// Firebase Auth sign in
@@ -61,6 +68,19 @@ const AdminLogin = ({ onLogin }) => {
 				const querySnapshot = await getDocs(q);
 				if (!querySnapshot.empty) {
 					const data = querySnapshot.docs[0].data();
+					// populate context user for TopBar avatar/menu
+					try {
+						const userObj = {
+							name: data.name || data.displayName || auth.currentUser?.displayName || "",
+							email: data.email || auth.currentUser?.email || email,
+							avatar: data.avatar || data.photoURL || auth.currentUser?.photoURL || "",
+						};
+						setUser && setUser(userObj);
+					} catch (ctxErr) {
+						// non-fatal: continue without context
+						console.warn("Failed to set user in context:", ctxErr);
+					}
+
 					if (data.role === "admin") {
 						onLogin("admin");
 					} else if (data.role === "stylist") {
@@ -69,6 +89,14 @@ const AdminLogin = ({ onLogin }) => {
 						setError("Role not assigned. Contact admin.");
 					}
 				} else {
+					// If there's no user doc, still try to populate user from auth profile
+					if (auth.currentUser) {
+						setUser && setUser({
+							name: auth.currentUser.displayName || "",
+							email: auth.currentUser.email || email,
+							avatar: auth.currentUser.photoURL || "",
+						});
+					}
 					setError("User role not found.");
 				}
 			} catch (err) {

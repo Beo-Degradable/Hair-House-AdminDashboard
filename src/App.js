@@ -1,23 +1,61 @@
-
-import React, { useContext, useState } from "react";
-import AdminLogin from "./AdminLogin";
-import AdminDashboard from "./AdminDashboard";
-import StylistDashboard from "./StylistDashboard";
+import React, { useContext } from "react";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import AdminLogin from "./pages/LogIn/AdminLogin";
+import AdminDashboard from "./pages/AdminSide/AdminDashboard";
+import StylistLayout from "./pages/StylistSide/StylistLayout";
+// Stylist appointment page — import from the correct folder where the
+// component actually lives. Previously the path referenced
+// `AppointmentPage` which doesn't exist and prevented the route from
+// rendering. Use the StylistAppointmentPage folder instead.
+import StylistAppointmentPage from "./pages/StylistSide/StylistAppointmentPage";
+import StylistHome from "./pages/StylistSide/StylistHome";
+import TodayList from "./pages/StylistSide/TodayList";
+import ProfilePage from "./pages/AdminSide/ProfilePage";
+import AccountSettingsPage from "./pages/AdminSide/AccountSettingsPage";
+import NotificationsPage from "./pages/AdminSide/NotificationsPage";
+import HelpPage from "./pages/AdminSide/HelpPage";
+import AboutPage from "./pages/AdminSide/AboutPage";
+import AdminAppointmentPage from "./pages/AdminSide/AppointmentPage/AppointmentPage";
+import ProductPage from "./pages/AdminSide/ProductPage/ProductPage";
+import ServicePage from "./pages/AdminSide/ServicePage/ServicePage";
+import InventoryPage from "./pages/AdminSide/InventoryPage/InventoryPage";
+import UsersPage from "./pages/AdminSide/UsersPage/UsersPage";
 import { AuthContext } from "./context/AuthContext";
 
 function App() {
   const { role, setRole } = useContext(AuthContext);
 
-  if (!role) {
-    return <AdminLogin onLogin={setRole} />;
-  }
-  if (role === "admin") {
-    return <AdminDashboard onLogout={() => setRole("")} />;
-  }
-  if (role === "stylist") {
-    return <StylistDashboard onLogout={() => setRole("")} />;
-  }
-  return null;
+  return (
+    <BrowserRouter>
+      {!role && <AdminLogin onLogin={setRole} />}
+      {role === "stylist" && (
+        <Routes>
+          <Route path="/stylist/*" element={<StylistLayout onLogout={() => setRole("")} />}>
+            <Route index element={<StylistHome />} />
+            <Route path="appointments" element={<StylistAppointmentPage />} />
+            <Route path="today" element={<TodayList />} />
+          </Route>
+          <Route path="*" element={<Navigate to="/stylist" replace />} />
+        </Routes>
+      )}
+      {role === "admin" && (
+        <Routes>
+          <Route path="/" element={<AdminDashboard onLogout={() => setRole("")} />}/>
+          <Route path="/profile" element={<AdminDashboard onLogout={() => setRole("")} page={<ProfilePage />} />} />
+          <Route path="/account-settings" element={<AdminDashboard onLogout={() => setRole("")} page={<AccountSettingsPage />} />} />
+          <Route path="/notifications" element={<AdminDashboard onLogout={() => setRole("")} page={<NotificationsPage />} />} />
+          <Route path="/appointments" element={<AdminDashboard onLogout={() => setRole("") } page={<AdminAppointmentPage />} />} />
+          <Route path="/products" element={<AdminDashboard onLogout={() => setRole("")} page={<ProductPage />} />} />
+          <Route path="/services" element={<AdminDashboard onLogout={() => setRole("")} page={<ServicePage />} />} />
+          <Route path="/inventory" element={<AdminDashboard onLogout={() => setRole("")} page={<InventoryPage />} />} />
+          <Route path="/users" element={<AdminDashboard onLogout={() => setRole("")} page={<UsersPage />} />} />
+          <Route path="/help" element={<AdminDashboard onLogout={() => setRole("")} page={<HelpPage />} />} />
+          <Route path="/about" element={<AdminDashboard onLogout={() => setRole("")} page={<AboutPage />} />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      )}
+    </BrowserRouter>
+  );
 }
 
 export default App;

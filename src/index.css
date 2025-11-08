@@ -1,15 +1,141 @@
+/* Responsive Admin Dashboard Styles */
+.admin-topbar-title {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 110px;
+}
+
+.admin-topbar-nav {
+  display: flex;
+  gap: 12px;
+}
+
+@media (max-width: 600px) {
+  .admin-topbar-nav {
+    /* keep topbar options inline on small phones (avoid vertical stacking) */
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+    position: static;
+    top: auto;
+    right: auto;
+    background: transparent;
+    padding: 0 6px;
+    border-radius: 0;
+    box-shadow: none;
+    z-index: auto;
+    overflow-x: auto; /* allow scrolling horizontally if there are many items */
+    -webkit-overflow-scrolling: touch;
+  }
+  .admin-topbar-nav > * {
+    flex: 0 0 auto; /* prevent children from stretching to full width */
+  }
+  .admin-topbar-title {
+    font-size: 16px;
+    max-width: 90px;
+  }
+  .admin-dashboard-main {
+    padding: 12px 4px 4px 4px !important;
+  }
+}
 body {
   margin: 0;
-  font-family: 'Segoe UI', Arial, sans-serif;
-  background: #181818;
-  color: #fff;
+  font-family: var(--font-family, 'Segoe UI', Arial, sans-serif);
+  background: var(--bg, #181818);
+  color: var(--text-primary, #fff);
 }
 
 :root {
+  /* legacy variables kept for compatibility */
   --gold: #FFD700;
   --white: #fff;
   --black: #181818;
   --dark-grey: #232323;
+  --btn-bg: #2b6cb0;
+  --muted: #bdbdbd;
+  --border-main: #3a3a3a;
+  --danger: #d32f2f;
+  --success: #2e7d32;
+
+  /* Design tokens (centralized) */
+  --primary: #2b6cb0; /* primary interactive color */
+  --accent: #FFD700; /* gold accent */
+  --bg: #181818;
+  --surface: #232323;
+  --text-primary: #ffffff;
+  --muted-text: #bdbdbd;
+
+  --font-family: 'Segoe UI', Arial, sans-serif;
+  --font-size-base: 14px;
+  --font-size-lg: 18px;
+
+  --space-xxs: 4px;
+  --space-xs: 8px;
+  --space-sm: 12px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --input-height: 36px;
+  --search-width: 220px;
+
+  /* Compatibility aliases used across components */
+  /* These map older or component-specific tokens to the centralized design tokens above. */
+  --bg-drawer: var(--surface);
+  --bg-main: var(--bg);
+  --text-main: var(--text-primary);
+  --icon-main: var(--muted-text);
+  --logout-color: var(--danger);
+}
+
+/* Responsive utility helpers */
+.container {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  /* reduce horizontal padding to shift contents left */
+  padding: 0 calc(var(--space-sm));
+  box-sizing: border-box;
+}
+
+/* Dashboard grid: left column for main widgets, right column for feed/quick actions */
+.dashboard-grid {
+  display: grid;
+  gap: var(--space-md);
+  grid-template-columns: 1fr 360px;
+  align-items: start;
+}
+
+@media (max-width: 980px) {
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-md);
+}
+
+.col {
+  flex: 1 1 0;
+  min-width: 0; /* allow children to shrink for text-overflow */
+}
+
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* responsive table wrapper for horizontal scroll on very small screens */
+.responsive-table-wrap {
+  width: 100%;
+  overflow-x: auto;
 }
 
 /* Gold trimmings for headers and borders */
@@ -36,3 +162,360 @@ h1, h2, h3, th {
 .button-gold:hover {
   background: #e6c200;
 }
+
+/* Darker gold (more muted, accessible) used for important actions in modals/forms */
+.button-gold-dark {
+  background: #b8860b; /* dark goldenrod */
+  color: var(--black);
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.button-gold-dark:hover {
+  background: #9a6f08; /* slightly darker on hover */
+}
+.button-gold-dark:focus {
+  outline: 3px solid rgba(184,134,11,0.18);
+  outline-offset: 2px;
+}
+.button-gold-dark:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Generic button styles */
+.btn {
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border-main);
+  background: transparent;
+  color: var(--white);
+  cursor: pointer;
+}
+.btn-primary {
+  background: var(--btn-bg);
+  color: var(--white);
+  border: none;
+}
+.btn-danger {
+  background: var(--danger);
+  color: #fff;
+  border: none;
+}
+.btn-ghost {
+  background: transparent;
+  color: var(--white);
+  border: 1px solid var(--border-main);
+}
+
+/* Users styles removed per request. Placeholder selectors kept to avoid breaking other rules. */
+.users-container { padding: 0; }
+/* users-related styles removed by request */
+
+/* Appointments styles */
+.appointments-container { padding: 20px 12px; }
+.appointments-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 20px;
+  align-items: start;
+}
+.appointments-container.full-page {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  /* tighter left padding so main content shifts left a little */
+  padding-left: 0px;
+  padding-right: 12px;
+  box-sizing: border-box;
+}
+
+/* Left-shift main screen elements (do NOT affect topbar) */
+.admin-dashboard-main,
+.appointments-container,
+.appointments-container.full-page,
+.table-area,
+.table-wrap,
+.appointment-sidebar,
+.appointment-card {
+  /* smaller left padding so content sits more to the left of the viewport */
+  padding-left: 6px;
+  padding-right: 12px;
+  margin-left: 0;
+}
+.appointments-table {
+  width: 100%;
+  border-collapse: collapse;
+  /* default to fixed so desktop columns stay proportionate, but allow auto on very small screens */
+  table-layout: fixed;
+}
+.appointments-table th, .appointments-table td {
+  padding: 10px;
+  border-bottom: 1px solid rgba(255,255,255,0.12);
+  text-align: left;
+  /* prefer truncation but allow wrapping where it helps on narrow screens */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* stronger gridlines: vertical separators between columns and clearer row dividers */
+.appointments-table th, .appointments-table td {
+  border-right: 1px solid rgba(255,255,255,0.12);
+}
+.appointments-table th:last-child, .appointments-table td:last-child {
+  border-right: none;
+}
+/* alternate row background for readability */
+.appointments-table tbody tr:nth-child(odd) {
+  background: rgba(255,255,255,0.01);
+}
+.appointments-table tbody tr:hover {
+  background: rgba(255,255,255,0.03);
+}
+
+/* Desktop adjustments: make table less cramped and span available space */
+@media (min-width: 641px) {
+  .appointments-container.full-page {
+    padding-left: 16px;
+    padding-right: 32px;
+  }
+  .appointments-title {
+    font-size: 28px;
+    letter-spacing: 0.4px;
+    margin-bottom: 6px;
+  }
+  .appointments-filters {
+    margin-top: 6px;
+    gap: 12px;
+  }
+  .table-area {
+    width: 100%;
+    min-width: 0; /* allow child to shrink if needed */
+  }
+  /* Two-column layout on wider screens: table + sidebar */
+  .appointments-grid {
+    grid-template-columns: 1fr 360px;
+    gap: 24px;
+    align-items: start;
+  }
+  .table-wrap {
+    width: 100%;
+    overflow-x: auto;
+  }
+  .appointments-table th, .appointments-table td {
+    padding: 16px;
+    font-size: 15px;
+  }
+
+  /* Explicit column widths (desktop) - adjust percentages as needed */
+  /* Desktop column shares: percentages tuned for legibility */
+  /* Desktop: slightly narrower to reduce total width */
+  .appointments-table th:nth-child(1), .appointments-table td:nth-child(1) { width: 16%; } /* When */
+  .appointments-table th:nth-child(2), .appointments-table td:nth-child(2) { width: 14%; } /* Name */
+  .appointments-table th:nth-child(3), .appointments-table td:nth-child(3) { width: 20%; } /* Email */
+  .appointments-table th:nth-child(4), .appointments-table td:nth-child(4) { width: 13%; } /* Service */
+  .appointments-table th:nth-child(5), .appointments-table td:nth-child(5) { width: 9%; } /* Stylist */
+  .appointments-table th:nth-child(6), .appointments-table td:nth-child(6) { width: 9%; } /* Branch */
+  .appointments-table th:nth-child(7), .appointments-table td:nth-child(7) { width: 6%; }  /* Status */
+  .appointments-table th:nth-child(8), .appointments-table td:nth-child(8) { width: 3%; }  /* Actions */
+}
+.appointment-sidebar {
+  background: rgba(255,255,255,0.02);
+  border: 1px solid var(--border-main);
+  padding: 12px;
+  border-radius: 8px;
+}
+.appointment-sidebar { width: 100%; }
+
+@media (min-width: 1000px) {
+  /* on wide screens give the sidebar a fixed width but keep it below the table */
+  .appointment-sidebar {
+    width: 360px;
+    margin-left: auto;
+  }
+}
+.appointment-card {
+  border: 1px solid var(--border-main);
+  padding: 12px;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.01);
+}
+.appointment-form input, .appointment-form select {
+  width: 100%;
+  padding: 8px;
+  margin-bottom: 8px;
+  border-radius: 6px;
+  border: 1px solid var(--border-main);
+  background: transparent;
+  color: var(--white);
+}
+
+/* Dark-themed selects and options (improves readability in modals/forms) */
+select, select option {
+  background: var(--surface);
+  color: var(--text-primary);
+}
+
+/* Specific: ensure selects inside modal forms follow the dark surface and have visible borders */
+.modal-form select,
+.modal-form input,
+form select,
+form input {
+  background: var(--surface);
+  color: var(--text-primary);
+  border: 1px solid var(--border-main);
+}
+
+/* Some browsers (like Windows Chrome) render option backgrounds using system colors; force consistent styling where supported */
+select::-ms-expand { background: transparent; }
+.full-screen-form {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+.full-screen-form .appointment-form {
+  width: 100%;
+  max-width: 520px;
+  background: var(--surface);
+  padding: 16px;
+  border-radius: 8px;
+}
+
+/* New appointment modal responsive sizing */
+.new-appointment-modal {
+  background: var(--surface);
+  color: var(--text-primary);
+  padding: 18px;
+  border-radius: 8px;
+  width: 90%;
+  max-width: 760px;
+  box-sizing: border-box;
+}
+.new-appointment-form .form-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 80%;
+}
+.new-appointment-form input,
+.new-appointment-form select {
+  padding: 8px;
+  border-radius: 6px;
+  border: 1px solid var(--border-main);
+  background: var(--surface);
+  color: var(--text-primary);
+}
+
+@media (max-width: 980px) {
+  .new-appointment-modal { width: 92%; }
+  .new-appointment-form .form-row { width: 90%; }
+}
+@media (max-width: 640px) {
+  .new-appointment-modal { width: 98%; padding: 12px; max-width: none; }
+  .new-appointment-form .form-row { width: 100%; }
+  .new-appointment-modal .form-row > label { font-size: 13px; }
+  .new-appointment-modal .form-row input,
+  .new-appointment-modal .form-row select { font-size: 14px; }
+}
+
+@media (max-width: 640px) {
+  /* Keep desktop table visible on small screens for now */
+  .appointments-grid { grid-template-columns: 1fr; }
+  /* Make the table truly responsive: remove forced horizontal scroll by allowing wrapping
+     and word-breaking, and removing min-width constraints that cause overflow. */
+  .appointments-table { table-layout: auto; width: 100%; }
+
+  /* Allow content to wrap and break long words so columns don't force horizontal scroll */
+  .appointments-table th,
+  .appointments-table td {
+    white-space: normal;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+    padding: 8px 8px;
+    font-size: 13px;
+  }
+
+  /* Remove mobile min-widths to avoid forcing an overflow */
+  .appointments-table th:nth-child(1), .appointments-table td:nth-child(1),
+  .appointments-table th:nth-child(2), .appointments-table td:nth-child(2),
+  .appointments-table th:nth-child(3), .appointments-table td:nth-child(3),
+  .appointments-table th:nth-child(4), .appointments-table td:nth-child(4),
+  .appointments-table th:nth-child(5), .appointments-table td:nth-child(5),
+  .appointments-table th:nth-child(6), .appointments-table td:nth-child(6),
+  .appointments-table th:nth-child(7), .appointments-table td:nth-child(7),
+  .appointments-table th:nth-child(8), .appointments-table td:nth-child(8) {
+    min-width: 0;
+  }
+
+  /* Make the scroll wrapper pass through to avoid an inner horizontal scrollbar */
+  .responsive-table-wrap { overflow-x: visible; }
+}
+
+/* Generic modal overlay + container to ensure modals appear above content */
+.modal-overlay {
+  position: fixed;
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0,0,0,0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+}
+.modal-container {
+  background: var(--surface);
+  color: var(--text-primary);
+  padding: 18px;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+  width: 95%;
+  max-width: 900px;
+  max-height: 90vh;
+  overflow: auto;
+  border: 1px solid var(--border-main);
+  box-sizing: border-box;
+}
+
+/* Stack header action buttons under the title on small screens and make them equal width */
+@media (max-width: 640px) {
+  .appointments-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  .appointments-header-actions {
+    width: 100%;
+    display: flex;
+    gap: 8px;
+  }
+  .appointments-header-actions .btn,
+  .appointments-header-actions .btn-primary {
+    flex: 1 1 0;
+    width: 50%;
+    min-width: 0;
+  }
+  /* ensure buttons align under the title and are not pushed to the right */
+  .appointments-title { width: 100%; }
+}
+
+/* Desktop/Default: header title left, actions right */
+.appointments-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.appointments-header-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
