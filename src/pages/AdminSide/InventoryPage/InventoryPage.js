@@ -1,3 +1,5 @@
+// Inventory management UI: list products (linked + unlinked), filter by branch/search,
+// and allow inline quantity edits with audit/history.
 import React, { useState, useMemo } from 'react';
 import useMediaQuery from '../../../hooks/useMediaQuery';
 import useInventory from '../../../hooks/useInventory';
@@ -10,7 +12,6 @@ import { sanitizeForSearch } from '../../../utils/validators';
 import { adjustInventoryRecord } from '../../../utils/inventoryActions';
 import InventoryModal from './InventoryModal';
 import AddInventoryModal from './AddInventoryModal';
-// db import removed
 
 const InventoryRow = ({ it, qty }) => {
   return (
@@ -34,16 +35,14 @@ const InventoryPage = () => {
   const [editingRawId, setEditingRawId] = useState(null);
   const [editRawValue, setEditRawValue] = useState('');
   const [editingRawLoading, setEditingRawLoading] = useState(false);
-  // aggregation happens automatically when no branch is selected (All branches)
   const defaultBranchMap = [
     { id: 'B001', name: 'Vergara' },
     { id: 'B002', name: 'Lawas' },
     { id: 'B003', name: 'Lipa' },
     { id: 'B004', name: 'Tanauan' },
   ];
-  // helper to check if a branch key (id or name) matches the currently selected branch
   const branchKeyMatches = (key) => {
-    if (!selectedBranch) return true; // no branch selected -> all match
+    if (!selectedBranch) return true;
     if (!key) return false;
     if (key === selectedBranch) return true;
     const branchList = (branches && branches.length > 0) ? branches : defaultBranchMap;
@@ -54,21 +53,18 @@ const InventoryPage = () => {
   
 
   const filtered = useMemo(() => {
-    // Determine the base list of products to show.
-    // Primary source: inventoryMap (keys are productIds). Fallback: products `items`.
+    // Build display list: linked products via inventoryMap, then group unlinked docs by name.
     const displayItems = (() => {
       const invKeys = Object.keys(inventoryMap || {});
       const itemsOut = [];
 
-      // include linked products from inventoryMap
       invKeys.forEach(pid => {
         const prod = items.find(p => p.id === pid || p.sku === pid) || {};
         const invDoc = inventoryDocs.find(d => d.productId === pid) || {};
         itemsOut.push({ id: pid, name: invDoc.productName || prod.name || pid });
       });
 
-      // include unlinked inventory docs grouped by productName
-      // consider a doc "unlinked" when it has no productId or the productId does not match any known product
+      // Include unlinked inventory docs grouped by productName
       const unlinked = inventoryDocs.filter(d => {
         const notLinked = !d.productId || !items.find(p => p.id === d.productId || p.sku === d.productId);
         return notLinked && d.productName;
@@ -79,7 +75,6 @@ const InventoryPage = () => {
         return acc;
       }, {});
       Object.keys(unlinked).forEach(name => {
-        // synthetic id for unlinked groups
         const sid = `unlinked:${name}`;
         itemsOut.push({ id: sid, name });
       });
@@ -89,20 +84,17 @@ const InventoryPage = () => {
 
     let list = displayItems.slice();
 
-    // text query filter
     if (query) {
       const q = query.toLowerCase();
       list = list.filter(i => (i.name || '').toLowerCase().includes(q));
     }
 
-    // branch filter: if a branch is selected (by name), only keep items that have positive qty for that branch
+    // If a branch is selected, only keep items with positive qty for that branch
     if (selectedBranch) {
       const branchList = (branches && branches.length > 0) ? branches : defaultBranchMap;
-      // helper that checks whether a branchKey (could be id or name) corresponds to selectedBranch
       const branchKeyMatches = (key) => {
         if (!key) return false;
-        if (key === selectedBranch) return true; // exact name match
-        // if key is an id, check branch list
+        if (key === selectedBranch) return true;
         const mapped = branchList.find(br => br.id === key || br.name === key);
         if (mapped && mapped.name === selectedBranch) return true;
         return false;
@@ -112,12 +104,10 @@ const InventoryPage = () => {
         if (!item) return false;
         const pid = item.id;
         const invForProduct = inventoryMap[pid] || {};
-        // check invForProduct keys directly
         const keys = Object.keys(invForProduct || {});
         for (const k of keys) {
           if (branchKeyMatches(k) && Number(invForProduct[k].quantity || 0) > 0) return true;
         }
-        // fallback: check raw docs
         let docs = [];
         if (String(pid).startsWith('unlinked:')) {
           const pname = pid.replace('unlinked:', '');
@@ -159,7 +149,7 @@ const InventoryPage = () => {
         <h2 style={{ margin: 0, marginTop: 0, marginBottom: isMobile ? 12 : 50 }}>Inventory</h2>
       </div>
 
-      {/* Controls: on mobile show search under header then buttons/select below; on desktop keep inline */}
+      {/* Controls */}
       {!isMobile ? (
         <div style={{ padding: '6px 0 12px 0', display: 'flex', gap: 12, alignItems: 'center' }}>
           <ValidatedInput
@@ -198,25 +188,11 @@ const InventoryPage = () => {
         </div>
       )}
 
-      {/* debug: inspect inventory data in console to help troubleshoot missing items */}
-      {console.debug && console.debug('[InventoryPage] debug', { items, inventoryMap, inventoryDocs, branches, loading })}
-
-      
-      {/* gather names of unlinked inventory groups so we can avoid rendering them twice */}
-      {(() => {
-        const names = new Set((inventoryDocs || []).filter(d => {
-          const notLinked = !d.productId || !items.find(p => p.id === d.productId || p.sku === d.productId);
-          return notLinked && d.productName;
-        }).map(d => String(d.productName).trim()));
-        return (
-          <div style={{ marginBottom: 8, color: '#6b7280' }}>Inventory docs: {inventoryDocs ? inventoryDocs.length : 0}</div>
-        );
-      })()}
+      <div style={{ marginBottom: 8, color: '#6b7280' }}>Inventory docs: {inventoryDocs ? inventoryDocs.length : 0}</div>
       <div style={{ border: '1px solid var(--border-main)', borderRadius: 8, overflowX: 'auto' }}>
         {(() => {
           if (loading) return <div style={{ padding: 12 }}>Loading inventory...</div>;
 
-          // Use table layout for all screen sizes; allow horizontal scrolling when table is wide
           return (
             <table style={{ minWidth: 720, width: '100%', borderCollapse: 'collapse' }}>
               <thead>
@@ -231,11 +207,11 @@ const InventoryPage = () => {
                 {filtered.map(it => {
                   const pid = it.id;
 
-                  // inventory records for this product
+                  // Inventory records for this product
                   let invForProduct = inventoryMap[pid] || {};
                   let perBranchEntries = Object.entries(invForProduct);
 
-                  // if this is a synthetic unlinked id (created from inventoryDocs), build per-branch entries from inventoryDocs
+                  // If synthetic unlinked id, build per-branch entries from inventoryDocs
                   if (String(pid).startsWith('unlinked:')) {
                     const pname = pid.replace('unlinked:', '');
                     const docs = (inventoryDocs || []).filter(d => !d.productId && String(d.productName || '') === pname);
@@ -248,7 +224,7 @@ const InventoryPage = () => {
                     perBranchEntries = Object.entries(map);
                   }
 
-                  // quantity calculation
+                  // Quantity calculation
                   let qty = 0;
                   if (selectedBranch) {
                     const branchList = (branches && branches.length > 0) ? branches : defaultBranchMap;
@@ -275,7 +251,7 @@ const InventoryPage = () => {
                   if (qty === 0) status = 'No stock';
                   else if (qty > 0 && qty <= 5) status = 'Low stock';
 
-                  // if this is an unlinked group, find a matching raw doc for the selected branch (if any)
+                  // For unlinked group, find a matching raw doc for the selected branch (if any)
                   const isUnlinkedGroup = String(pid).startsWith('unlinked:');
                   let rawForGroup = null;
                   if (isUnlinkedGroup) {
@@ -303,7 +279,7 @@ const InventoryPage = () => {
                       </td>
                       <td style={{ padding: '10px 16px' }}>
                         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                          {/* Update control (when applicable) */}
+                          {/* Inline update */}
                           {selectedBranch ? (
                             isUnlinkedGroup ? (
                               rawForGroup ? (
@@ -414,13 +390,13 @@ const InventoryPage = () => {
                             )
                           )}
 
-                          {/* Delete control - always shown */}
+                          {/* Delete */}
                           <button onClick={async () => {
                             const confirmMsg = selectedBranch ? `Delete inventory records for "${it.name}" in ${selectedBranch}? This cannot be undone.` : `Delete all inventory documents for "${it.name}"? This cannot be undone.`;
                             if (!window.confirm(confirmMsg)) return;
                             try {
                               if (selectedBranch) {
-                                // delete just docs for the selected branch
+                                // Delete docs only for the selected branch
                                 if (isUnlinkedGroup) {
                                   const pname = pid.replace('unlinked:', '');
                                   const docsToDelete = (inventoryDocs || []).filter(d => !d.productId && String(d.productName || '') === pname && (d.branchName === selectedBranch || d.branch === selectedBranch || (d.branchId && branchKeyMatches(d.branchId)))).map(d => d.id).filter(Boolean);
@@ -446,7 +422,7 @@ const InventoryPage = () => {
                                   }));
                                 }
                               } else {
-                                // delete across branches
+                                // Delete across branches
                                 if (isUnlinkedGroup) {
                                   const pname = pid.replace('unlinked:', '');
                                   const docsToDelete = (inventoryDocs || []).filter(d => !d.productId && String(d.productName || '') === pname).map(d => d.id).filter(Boolean);

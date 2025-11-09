@@ -1,3 +1,4 @@
+// AddInventoryModal: create per-branch inventory docs and upsert aggregate product.
 import React, { useState, useEffect } from 'react';
 import { collection, addDoc, serverTimestamp, doc, updateDoc, getDoc } from 'firebase/firestore';
 import { db } from '../../../firebase';
@@ -5,7 +6,6 @@ import ValidatedInput from '../../../components/ValidatedInput';
 import { validateForm } from '../../../utils/validators';
 
 const AddInventoryModal = ({ open, onClose, onAdded, products = [], branches = [] }) => {
-  // We'll collect quantities per branch via buttons + inputs
   const branchMap = [
     { id: 'B001', name: 'Vergara' },
     { id: 'B002', name: 'Lawas' },
@@ -28,10 +28,7 @@ const AddInventoryModal = ({ open, onClose, onAdded, products = [], branches = [
   const [loading, setLoading] = useState(false);
 
 
-  // when the modal opens or products update, we could prefill by name if desired
-  useEffect(() => {
-    // noop - keeping the hook count stable. Prefill is done from the Name input only.
-  }, [products]);
+  useEffect(() => { /* keep hook stable */ }, [products]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -39,7 +36,7 @@ const AddInventoryModal = ({ open, onClose, onAdded, products = [], branches = [
     if (!v.ok) { alert(v.message || 'Invalid input'); return; }
     setLoading(true);
     try {
-      // prefer the Name input; must provide a product name
+  // Require product name
       const nameInput = name && String(name).trim();
       if (!nameInput) throw new Error('Enter product name');
       // build list of writes for branches with quantities
@@ -70,13 +67,13 @@ const AddInventoryModal = ({ open, onClose, onAdded, products = [], branches = [
 
       if (createdIds.length === 0) throw new Error('Enter quantity for at least one branch');
 
-      // aggregate total quantity across branches we just wrote
+  // Aggregate total quantity across branches just written
       const totalAdded = Object.values(branchQuantities).reduce((s, v) => s + (Number(v || 0) || 0), 0);
       try {
-        // try to find an existing product by exact name (case-insensitive) or sku match from the passed `products` prop
+  // Try to find existing product by exact name/sku from provided products
         const existing = (products || []).find(p => (p.name && String(p.name).toLowerCase() === String(nameInput).toLowerCase()) || (p.sku && p.sku === nameInput));
           if (existing && existing.id) {
-          // update existing product: increment quantity by totalAdded and set other fields (exclude branch info)
+          // Update existing: increment quantity and merge fields
           const prodRef = doc(db, 'products', existing.id);
           const currentQty = Number(existing.quantity || 0);
           const newQty = currentQty + totalAdded;
@@ -91,14 +88,14 @@ const AddInventoryModal = ({ open, onClose, onAdded, products = [], branches = [
             lastUpdated: serverTimestamp(),
           });
           console.log('[AddInventoryModal] updated existing product', existing.id, 'newQty', newQty);
-            // history for product update (before/after)
+            // History for product update
             try {
               const prodRef = doc(db, 'products', existing.id);
               const prev = existing;
               try { await logHistory({ action: 'update', collection: 'products', docId: existing.id, before: prev, after: { ...prev, quantity: newQty } }); } catch (hh) { console.warn('Failed to write history for product update', hh); }
             } catch (hh) { console.warn('Failed to write history for product update', hh); }
           } else {
-          // create a new product document (no branch info) with the aggregated quantity
+          // Create new product doc with aggregated quantity
           const prodData = {
             name: nameInput,
             brand: brand || null,
@@ -119,7 +116,7 @@ const AddInventoryModal = ({ open, onClose, onAdded, products = [], branches = [
         // don't fail the whole operation — inventory docs were created; notify developer
       }
 
-      // call onAdded with array of ids for callers that want them
+  // Callback onAdded
       onAdded && onAdded(createdIds);
       onClose && onClose();
     } catch (err) {

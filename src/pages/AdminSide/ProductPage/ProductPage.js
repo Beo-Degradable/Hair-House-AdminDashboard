@@ -1,3 +1,4 @@
+// Product listing: realtime table with simple search.
 import React, { useState, useEffect } from 'react';
 import { collection, onSnapshot } from 'firebase/firestore';
 import { db } from '../../../firebase';
@@ -22,7 +23,7 @@ const ProductCard = ({ p, cardFontSize = 14 }) => {
 
 const localStyles = `
 .hh-product-page {}
-.hh-product-header { /* container for the heading */ text-align: left; }
+.hh-product-header { text-align: left; }
 .hh-product-header h2 { margin: 0; }
 .hh-product-search { display: flex; gap: 12px; align-items: center; margin-bottom: 16px; }
 .hh-product-search input { padding: 8px; border-radius: 8px; border: 1px solid var(--border-main); width: 360px; max-width: 100%; }
@@ -34,7 +35,6 @@ const localStyles = `
 `;
 
 const paddingToStyle = (pad) => {
-  // pad can be: number (px), string (css), or object { top, right, bottom, left }
   if (pad == null) return {};
   if (typeof pad === 'number' || typeof pad === 'string') return { padding: pad };
   const { top = 0, right = 0, bottom = 0, left = 0 } = pad;

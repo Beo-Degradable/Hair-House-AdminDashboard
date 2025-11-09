@@ -8,6 +8,10 @@ import StylistLayout from "./pages/StylistSide/StylistLayout";
 // `AppointmentPage` which doesn't exist and prevented the route from
 // rendering. Use the StylistAppointmentPage folder instead.
 import StylistAppointmentPage from "./pages/StylistSide/StylistAppointmentPage";
+import StylistAccountPage from "./pages/StylistSide/StylistAccountPage";
+import StylistSettingsPage from "./pages/StylistSide/StylistSettingsPage";
+import StylistHelpPage from "./pages/StylistSide/StylistHelpPage";
+import StylistAboutPage from "./pages/StylistSide/StylistAboutPage";
 import StylistHome from "./pages/StylistSide/StylistHome";
 import TodayList from "./pages/StylistSide/TodayList";
 import ProfilePage from "./pages/AdminSide/ProfilePage";
@@ -34,6 +38,13 @@ function App() {
             <Route index element={<StylistHome />} />
             <Route path="appointments" element={<StylistAppointmentPage />} />
             <Route path="today" element={<TodayList />} />
+            {/* Unified account page routes */}
+            <Route path="account" element={<StylistAccountPage />} />
+            <Route path="profile" element={<StylistAccountPage />} />
+            <Route path="account-settings" element={<StylistAccountPage />} />
+            <Route path="settings" element={<StylistSettingsPage />} />
+            <Route path="help" element={<StylistHelpPage />} />
+            <Route path="about" element={<StylistAboutPage />} />
           </Route>
           <Route path="*" element={<Navigate to="/stylist" replace />} />
         </Routes>

@@ -1,3 +1,4 @@
+// About page: surfaces product summary, version/build diagnostics, and reference links.
 import React, { useContext } from 'react';
 import { AuthContext } from '../../context/AuthContext';
 import packageJson from '../../../package.json';
@@ -98,7 +99,7 @@ export default function AboutPage() {
       <section style={styles.card}>
         <h2>Links & resources</h2>
         <ul>
-          <li><a href="/help">Help page</a> — OTP & profile docs</li>
+          <li><a href="/help">Help page</a> — password, email verification & profile docs</li>
           <li><a href="/privacy">Privacy policy</a></li>
           <li><a href="/LICENSE">License</a></li>
           <li><a href="/changelog">Changelog</a> (if available)</li>

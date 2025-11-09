@@ -1,3 +1,4 @@
+// Users listing: realtime table, search, delete with history, open Add modal.
 import React, { useEffect, useState } from 'react';
 import { collection, onSnapshot, deleteDoc, doc, addDoc, serverTimestamp, getDoc } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
@@ -30,12 +31,12 @@ const UsersPage = () => {
     const ok = window.confirm('Delete this user? This cannot be undone.');
     if (!ok) return;
     try {
-      // capture snapshot for history
+  // Snapshot for history
       const ref = doc(db, 'users', id);
       const snap = await getDoc(ref);
       const before = snap.exists() ? snap.data() : null;
       await deleteDoc(ref);
-      try {
+  try {
         const auth = getAuth();
         const user = auth.currentUser;
         const actor = user ? { uid: user.uid, email: user.email } : null;

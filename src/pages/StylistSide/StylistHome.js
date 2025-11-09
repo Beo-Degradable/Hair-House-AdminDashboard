@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import BookingWidget from '../../components/BookingWidget';
 import KPIRow from '../../components/KPIRow';
 
+// StylistHome — landing page with today's appointments and KPI snapshot
 const StylistHome = ({ onLogout }) => {
   const [branch, setBranch] = useState('');
 

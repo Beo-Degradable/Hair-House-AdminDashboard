@@ -1,3 +1,4 @@
+// AddUserModal: create user (admin/stylist) with basic validation + history log.
 import React, { useState } from 'react';
 import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
@@ -19,7 +20,7 @@ const AddUserModal = ({ open, onClose }) => {
   const reset = () => { setName(''); setEmail(''); setPassword(''); setShowPassword(false); setRole('stylist'); setBranchName(''); };
 
   const handleSave = async () => {
-    // basic validation per-field
+    // Validation
     if (!name || !email || !role) { alert('Please fill name, email and role'); return; }
     if (!isValidName(name)) { alert('Name should only contain letters, spaces, hyphen or apostrophe'); return; }
     if (!isValidEmail(email)) { alert('Please enter a valid email address'); return; }
@@ -30,7 +31,7 @@ const AddUserModal = ({ open, onClose }) => {
       const payload = { name: sanitizeName(name), email: email.trim(), role, password };
       if (role === 'stylist') payload.branchName = branchName;
       const ref = await addDoc(collection(db, 'users'), payload);
-      // history log (use helper)
+      // History log
       try {
         await logHistory({ action: 'create', collection: 'users', docId: ref.id, before: null, after: payload });
       } catch (hx) { console.warn('Failed to write history for user create', hx); }

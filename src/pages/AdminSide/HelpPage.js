@@ -1,3 +1,4 @@
+// Admin help & support reference: account flows (reauth/reset), troubleshooting, and support link.
 import React, { useContext } from 'react';
 import { AuthContext } from '../../context/AuthContext';
 
@@ -9,6 +10,7 @@ const styles = {
   code: { background: '#0f0f0f', padding: 8, borderRadius: 6 }
 };
 
+// Component: Admin help & support reference
 export default function HelpPage() {
   const { user } = useContext(AuthContext);
 
@@ -33,14 +35,23 @@ export default function HelpPage() {
       </div>
 
       <div style={styles.section}>
-        <h2 style={styles.h2}>Change password (OTP)</h2>
+        <h2 style={styles.h2}>Change password</h2>
         <ol>
-          <li>Open Account Settings → Change password</li>
-          <li>Enter new password and confirm</li>
-          <li>Click <em>Send OTP</em>. A single-use code will be emailed to your registered address.</li>
-          <li>Enter the OTP and click <em>Verify & Save</em>.</li>
+          <li>Open <strong>Account Settings</strong> → Change password</li>
+          <li>Enter your <strong>current password</strong> (required for sensitive changes)</li>
+          <li>Enter the <strong>new password</strong> twice and click <em>Update password</em></li>
         </ol>
-        <p>If you do not receive the OTP: check Spam/Junk, confirm the email shown on Account Settings, wait 60s then resend. If problems persist, contact support below.</p>
+        <p>Forgot the current password? Use <em>“Email reset link”</em> to send a Firebase password reset email to your address.</p>
+      </div>
+
+      <div style={styles.section}>
+        <h2 style={styles.h2}>Change email</h2>
+        <ol>
+          <li>Open <strong>My Account</strong> (or Account Settings if separate)</li>
+          <li>Enter the new email and click <em>Send verification link</em></li>
+          <li>Open the received email and click the link to finalize the change</li>
+        </ol>
+        <p>If the link expires, resend the verification.</p>
       </div>
 
       <div style={styles.section}>
@@ -51,8 +62,8 @@ export default function HelpPage() {
 
       <div style={styles.section}>
         <h2 style={styles.h2}>Troubleshooting / FAQ</h2>
-        <h4>OTP not received</h4>
-        <p>Check Spam/Junk. Confirm the email shown on your Account Settings page. Wait 60 seconds then resend the OTP. Include a screenshot and time when contacting support.</p>
+  <h4>Password reset email not received</h4>
+  <p>Check Spam/Junk. Confirm the email shown on your Account Settings page. If still missing after a few minutes, resend the reset and verify your network connectivity.</p>
         <h4>Avatar failed to upload</h4>
         <p>Allowed formats: JPG/PNG. Max size: 2MB. If the upload fails repeatedly, try an incognito window and check the browser console for errors to include in your report.</p>
         <h4>Requires recent login</h4>

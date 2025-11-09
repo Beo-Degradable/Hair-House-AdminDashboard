@@ -1,14 +1,13 @@
+// AppointmentForm: basic create/edit form (used internally; creation mostly external now).
 import React, { useEffect } from 'react';
 import { validateForm } from '../../../utils/validators';
 
 const AppointmentForm = ({ editing, onCancel, onSubmit, branches = [] }) => {
-  // simple helper to compute default startTime value for input
   const startTimeDefault = editing?.startTime
     ? new Date(editing.startTime?.toDate ? editing.startTime.toDate() : editing.startTime).toISOString().slice(0,16)
     : '';
 
   useEffect(() => {
-    // focus first input when mounted
     const el = document.querySelector('.appointment-form input[name="clientName"]');
     if (el) el.focus();
   }, []);

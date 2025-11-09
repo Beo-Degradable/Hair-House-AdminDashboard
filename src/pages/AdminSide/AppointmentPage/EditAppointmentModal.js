@@ -1,9 +1,6 @@
+// EditAppointmentModal: update appointment status (with cancel-request mapping) and show read-only info.
 import React, { useEffect, useState } from 'react';
 import { parseDurationToMinutes } from '../../../utils/time';
-
-// EditAppointmentModal now uses the same overlay/layout as NewAppointmentModal
-// but prefills values from the `appointment` prop. It performs the same
-// duration parsing and overlap checks and then calls onSubmit(payload).
 export default function EditAppointmentModal({ appointment = null, open = false, onClose = () => {}, onSubmit = () => {} }) {
   // This modal only allows updating the appointment status. Other fields are shown read-only.
   const [form, setForm] = useState({ status: 'booked' });
@@ -36,7 +33,7 @@ export default function EditAppointmentModal({ appointment = null, open = false,
     }
   };
 
-  // derive simple start-end string for display
+  // Derive simple start-end string for display
   const toDate = (t) => (t && t.toDate ? t.toDate() : (t ? new Date(t) : null));
   const s = toDate(appointment.startTime);
   let e = toDate(appointment.endTime);

@@ -1,3 +1,4 @@
+// EditServiceModal: load service, adjust fields/duration/products, write update + history.
 import React, { useState, useEffect } from 'react';
 import { validateForm, sanitizeName, sanitizeForSearch } from '../../../utils/validators';
 import { doc, updateDoc, getDoc, collection, onSnapshot, addDoc, serverTimestamp } from 'firebase/firestore';
@@ -35,7 +36,7 @@ const EditServiceModal = ({ open, id, onClose }) => {
   const [productSearch, setProductSearch] = useState('');
   useEffect(() => {
     const col = collection(db, 'products');
-    const unsub = onSnapshot(col, snap => setProducts(snap.docs.map(d => ({ id: d.id, ...d.data() }))), err => console.error('products listener error', err));
+    const unsub = onSnapshot(col, snap => setProducts(snap.docs.map(d => ({ id: d.id, ...d.data() }))), () => {});
     return () => unsub();
   }, []);
 
@@ -61,7 +62,7 @@ const EditServiceModal = ({ open, id, onClose }) => {
         productsUsed: data.productsUsed || []
       });
 
-      // history record (include actor)
+      // History record
       try {
         const auth = getAuth();
         const user = auth.currentUser;

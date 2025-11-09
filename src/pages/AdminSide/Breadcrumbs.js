@@ -1,7 +1,6 @@
+// Breadcrumbs component: renders navigation trail from items [{label,to}] with truncation.
 import React from 'react';
 import { Link } from 'react-router-dom';
-
-// Simple responsive breadcrumbs. Expects `items` = [{label, to}]
 const Breadcrumbs = ({ items = [] }) => {
 	if (!items.length) return null;
 	return (

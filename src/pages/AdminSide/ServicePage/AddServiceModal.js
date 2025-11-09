@@ -1,3 +1,4 @@
+// AddServiceModal: create a service with name/price/duration and optional product usage.
 import React, { useState, useEffect } from 'react';
 import { validateForm, sanitizeName, sanitizeForSearch } from '../../../utils/validators';
 import DurationClock from '../../../components/DurationClock';
@@ -21,9 +22,7 @@ const AddServiceModal = ({ open, onClose }) => {
 
   useEffect(() => {
     const col = collection(db, 'products');
-    const unsub = onSnapshot(col, snap => {
-      setProducts(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-    }, err => console.error('products listener error', err));
+    const unsub = onSnapshot(col, snap => setProducts(snap.docs.map(d => ({ id: d.id, ...d.data() }))), () => {});
     return () => unsub();
   }, []);
 
@@ -50,7 +49,7 @@ const AddServiceModal = ({ open, onClose }) => {
         createdAt: serverTimestamp()
       });
 
-      // write to history collection
+  // History log
       try { await logHistory({ action: 'create', collection: 'services', docId: ref.id, before: null, after: { name, price: Number(price) || 0, duration: durationMinutes ? `${durationMinutes}m` : '', durationMinutes: Number(durationMinutes) || 0, type } }); } catch (e) { console.warn('history logger failed', e); }
       onClose();
     } catch (err) {
@@ -94,7 +93,7 @@ const AddServiceModal = ({ open, onClose }) => {
             <div style={{ gridColumn: '1 / -1' }}>
               <div style={{ fontWeight: 700, marginBottom: 6 }}>Products used</div>
 
-              {/* selection row: search + select + qty + add */}
+              {/* Selection row */}
               <div style={{ display: 'flex', gap: 8, marginBottom: 8, alignItems: 'center' }}>
                 <select value={selectedProductId} onChange={e => {
                   const val = e.target.value;
@@ -112,7 +111,7 @@ const AddServiceModal = ({ open, onClose }) => {
                 <input placeholder="Search" value={productSearch} onChange={e => setProductSearch(sanitizeForSearch(e.target.value))} style={{ width: 160, padding: 8, background: 'var(--surface)', border: '1px solid var(--border-main)', color: 'var(--text-primary)' }} />
               </div>
 
-              {/* clickable search results (also add on click) */}
+              {/* Search results list */}
               {productSearch ? (
                 <div style={{ maxHeight: 160, overflow: 'auto', border: '1px solid var(--border-main)', borderRadius: 6, padding: 8, marginBottom: 8, background: 'var(--surface)' }}>
                   {products.filter(p => p.name?.toLowerCase().includes(productSearch.toLowerCase())).map(p => (
@@ -125,7 +124,7 @@ const AddServiceModal = ({ open, onClose }) => {
                 </div>
               ) : null}
 
-              {/* selected items container (hidden until items exist) */}
+              {/* Selected items */}
               {items.length > 0 ? (
                 <div style={{ border: '1px solid var(--border-main)', borderRadius: 6, padding: 8, display: 'grid', gap: 8, background: 'var(--surface)' }}>
                   {items.map(it => (

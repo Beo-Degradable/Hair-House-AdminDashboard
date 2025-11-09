@@ -1,3 +1,4 @@
+// Services list: filter by type/search, CRUD via modals, simple table layout.
 import React, { useState, useEffect } from 'react';
 import { collection, onSnapshot, deleteDoc, doc } from 'firebase/firestore';
 import { sanitizeForSearch } from '../../../utils/validators';
@@ -11,7 +12,7 @@ const formatPeso = (v) => {
   return `₱${n.toFixed(2)}`;
 };
 
-// table-style presentation is used below; keep small card component for any future use
+// Compact card (unused in table view; kept for future use)
 const ServiceCard = ({ s, onEdit, onDelete }) => (
   <div style={{ border: '1px solid var(--border-main)', borderRadius: 8, padding: 12, background: 'var(--bg-drawer)', boxSizing: 'border-box', width: '100%' }}>
     <div style={{ fontWeight: 700, marginBottom: 6 }}>{s.name}</div>

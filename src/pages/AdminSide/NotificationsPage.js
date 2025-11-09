@@ -1,3 +1,4 @@
+// Notifications page: lists recent history entries, formats appointment/promotion/user changes.
 import React, { useEffect, useState } from "react";
 import { collection, query as q, orderBy, onSnapshot, getDocs, deleteDoc, getDoc, doc as docRef } from 'firebase/firestore';
 import { db } from '../../firebase';
@@ -28,7 +29,6 @@ const NotificationsPage = () => {
     return () => unsub();
   }, []);
 
-  // Resolve actor UIDs (strings) to human-friendly names by reading the users collection once per uid.
   useEffect(() => {
     const uids = Array.from(new Set(items.map(it => (typeof it.actor === 'string' ? it.actor : null)).filter(Boolean)));
     if (uids.length === 0) return;
@@ -88,7 +88,6 @@ const NotificationsPage = () => {
           const header = isCancelRequest ? 'CANCEL_REQUEST' : ((it.action === 'update' ? 'Updated' : (it.action || 'ACTION')).toString().toUpperCase());
           const actorObj = it.actor;
           const actorLabel = (typeof actorObj === 'string') ? (actorNames[actorObj] || actorObj) : (actorObj?.name || actorObj?.displayName || actorObj?.email || actorObj?.uid || actorObj);
-          // build a descriptive message for appointment updates when possible
           const formatAppointmentUpdate = (before, after) => {
             if (!before || !after) return null;
             const bStatus = String(before.status || '').toLowerCase();
@@ -105,7 +104,6 @@ const NotificationsPage = () => {
             return null;
           };
 
-          // helper to format date (startDate/endDate may be Firestore Timestamp or JS Date)
           const fmtDate = (d) => {
             if (!d) return '';
             const date = d?.toDate ? d.toDate() : (d instanceof Date ? d : new Date(d));
@@ -116,7 +114,6 @@ const NotificationsPage = () => {
             return `${y}-${m}-${day}`;
           };
 
-          // promotion specific formatting
           const formatPromotionCreate = (after) => {
             if (!after) return null;
             return `New promotion "${after.title || it.docId}" (${after.type || 'Type'}) for ${after.branch || 'branch'}${after.serviceName ? ` • Service: ${after.serviceName}` : ''} (${fmtDate(after.startDate)} → ${fmtDate(after.endDate)}) status: ${after.status || 'active'}.`;

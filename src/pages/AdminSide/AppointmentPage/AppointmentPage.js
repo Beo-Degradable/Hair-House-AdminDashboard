@@ -1,5 +1,6 @@
+// Appointment management: filter by date/branch, update status, handle cancel requests,
+// and perform inventory + revenue side effects on completion.
 import React, { useMemo, useState, useEffect, useContext } from 'react';
-// firebase imports not needed in this file
 import { validateForm } from '../../../utils/validators';
 import useAppointments from '../../../hooks/useAppointments';
 import AppointmentForm from './AppointmentForm';
@@ -12,7 +13,6 @@ import { db } from '../../../firebase';
 import { adjustBranchQty, adjustInventoryRecord } from '../../../utils/inventoryActions';
 import { AuthContext } from '../../../context/AuthContext';
 
-// (removed debug log)
 
 function safeDateToISO(d) {
   if (!d) return '';
@@ -52,7 +52,7 @@ export default function AppointmentPage() {
     if (!editing) return;
     try {
       await updateAppointment(editing.id, payload, editing);
-      // If this is a cancellation request, record a history/notification so admins can act on it
+  // Cancellation request -> history entry
       try {
         const newStatusRaw = String(payload.status || '').toLowerCase();
         if (newStatusRaw === 'cancel_requested') {
@@ -75,7 +75,7 @@ export default function AppointmentPage() {
       } catch (histErr) {
         console.warn('failed to write cancel_request history', histErr);
       }
-  // inventory adjustments & revenue when status changes to 'completed'
+    // Inventory deductions & revenue recording on completion
       try {
         const normalize = (s) => {
           const v = String(s || '').toLowerCase();
@@ -93,7 +93,7 @@ export default function AppointmentPage() {
               const svc = snap.docs[0].data();
               const productsUsed = svc.productsUsed || [];
 
-              // Deduct product quantities once
+              // Deduct products once
               if (!editing.productsDeducted && productsUsed.length > 0) {
                 for (const p of productsUsed) {
                   if (!p || !p.productId) continue;
@@ -118,7 +118,7 @@ export default function AppointmentPage() {
                 }
               }
 
-              // Create a payment record once
+              // Create payment record once
               if (!editing.revenueRecorded) {
                 try {
                   const amount = Number(svc.price || 0);

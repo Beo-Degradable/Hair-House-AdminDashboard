@@ -1,14 +1,9 @@
 import React, { useState, useEffect, useRef, useContext } from "react";
 import { AuthContext } from "../../context/AuthContext";
-import { auth, db } from "../../firebase";
 import useAppointments from "../../hooks/useAppointments";
 import { useNavigate, useLocation } from "react-router-dom";
-import { collection, query as q, orderBy, limit, onSnapshot } from 'firebase/firestore';
 
-// Simplified stylist TopBar — keeps the admin look & tokens but presents a smaller,
-// stylist-focused navigation (Home, Appointments, Today), notifications indicator,
-// dark-mode toggle, and profile/logout. This file is intentionally smaller and
-// independent so stylist-specific UX can evolve.
+// StylistTopBar — compact nav + notifications + theme + profile/logout
 
 const NAV = [
   { label: 'Home', path: '/stylist' },
@@ -151,36 +146,75 @@ const TopBar = ({ onLogout, darkMode, setDarkMode, settingsOpen, setSettingsOpen
   return (
     <>
       <div className="stylist-topbar" style={{ height: 56, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 12px', gap: 12, background: 'var(--bg-drawer)', color: 'var(--icon-main)', position: 'sticky', top: 0, zIndex: 1400 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            {NAV.map(n => {
-              const active = isActive(n.path);
-              return (
-                <button
-                  key={n.path}
-                  onClick={(e) => { navigate(n.path); try { e.currentTarget.blur(); } catch (er) {} }}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    outline: 'none',
-                    boxShadow: 'none',
-                    WebkitAppearance: 'none',
-                    color: active ? 'var(--text-main)' : 'var(--icon-main)',
-                    fontWeight: active ? 700 : 500,
-                    padding: '6px 8px',
-                    borderRadius: 6,
-                    cursor: 'pointer',
-                    transition: 'color 160ms, border-bottom 160ms, box-shadow 160ms',
-                    borderBottom: active ? '2px solid var(--text-main)' : 'none',
-                    paddingBottom: active ? 4 : 6,
-                  }}
-                >
-                  {n.label}
-                </button>
-              );
-            })}
+        {/* Left area (empty on wide to allow centered nav) */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 80 }}>
+          {!isWide && (
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              {NAV.map(n => {
+                const active = isActive(n.path);
+                return (
+                  <button
+                    key={n.path}
+                    onClick={(e) => { navigate(n.path); try { e.currentTarget.blur(); } catch (er) {} }}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      outline: 'none',
+                      boxShadow: 'none',
+                      WebkitAppearance: 'none',
+                      color: active ? 'var(--text-main)' : 'var(--icon-main)',
+                      fontWeight: active ? 700 : 500,
+                      fontSize: 14,
+                      padding: '6px 8px',
+                      borderRadius: 6,
+                      cursor: 'pointer',
+                      transition: 'color 160ms, border-bottom 160ms, box-shadow 160ms',
+                      borderBottom: active ? '2px solid var(--text-main)' : 'none',
+                      paddingBottom: active ? 4 : 6,
+                    }}
+                  >
+                    {n.label}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Centered nav on wide screens */}
+        {isWide && (
+          <div style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)', height: '100%', display: 'flex', alignItems: 'center' }}>
+            <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+              {NAV.map(n => {
+                const active = isActive(n.path);
+                return (
+                  <button
+                    key={n.path}
+                    onClick={(e) => { navigate(n.path); try { e.currentTarget.blur(); } catch (er) {} }}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      outline: 'none',
+                      boxShadow: 'none',
+                      WebkitAppearance: 'none',
+                      color: active ? 'var(--text-main)' : 'var(--icon-main)',
+                      fontWeight: active ? 800 : 600,
+                      fontSize: 16,
+                      padding: '8px 10px',
+                      borderRadius: 8,
+                      cursor: 'pointer',
+                      transition: 'color 160ms, border-bottom 160ms, box-shadow 160ms',
+                      borderBottom: active ? '2px solid var(--text-main)' : 'none',
+                      paddingBottom: active ? 6 : 8,
+                    }}
+                  >
+                    {n.label}
+                  </button>
+                );
+              })}
+            </div>
           </div>
-  </div>
+        )}
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           {/* Notifications Bell Icon */}
@@ -299,13 +333,14 @@ const TopBar = ({ onLogout, darkMode, setDarkMode, settingsOpen, setSettingsOpen
             </button>
 
           {showProfileMenu && (
-                <div ref={profileMenuRef} role="menu" style={{ position: 'absolute', right: 0, top: 46, minWidth: 160, background: 'var(--bg-drawer)', border: '1px solid var(--border-main)', borderRadius: 8, padding: 8, boxShadow: '0 8px 30px rgba(0,0,0,0.25)', zIndex: 1700 }}>
-                <button role="menuitem" onClick={() => { navigate('/profile'); setShowProfileMenu(false); }} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '8px 10px', background: 'none', border: 'none', color: 'var(--icon-main)', cursor: 'pointer' }}>Profile</button>
-                <button role="menuitem" onClick={() => { navigate('/account-settings'); setShowProfileMenu(false); }} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '8px 10px', background: 'none', border: 'none', color: 'var(--icon-main)', cursor: 'pointer' }}>Account</button>
-                <div style={{ height: 1, background: 'var(--border-main)', margin: '8px 0' }} />
-                <button role="menuitem" onClick={() => { setShowProfileMenu(false); if (onLogout) onLogout(); }} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '8px 10px', background: 'none', border: 'none', color: 'var(--logout-color, #d32f2f)', cursor: 'pointer', fontWeight: 700 }}>Logout</button>
-              </div>
-            )}
+            <div ref={profileMenuRef} role="menu" style={{ position: 'absolute', right: 0, top: 46, minWidth: 180, background: 'var(--bg-drawer)', border: '1px solid var(--border-main)', borderRadius: 8, padding: 8, boxShadow: '0 8px 30px rgba(0,0,0,0.25)', zIndex: 1700 }}>
+              <button role="menuitem" onClick={() => { navigate('/stylist/account'); setShowProfileMenu(false); }} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '8px 10px', background: 'none', border: 'none', color: 'var(--icon-main)', cursor: 'pointer' }}>My Account</button>
+              <button role="menuitem" onClick={() => { navigate('/stylist/help'); setShowProfileMenu(false); }} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '8px 10px', background: 'none', border: 'none', color: 'var(--icon-main)', cursor: 'pointer' }}>Help</button>
+              <button role="menuitem" onClick={() => { navigate('/stylist/about'); setShowProfileMenu(false); }} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '8px 10px', background: 'none', border: 'none', color: 'var(--icon-main)', cursor: 'pointer' }}>About</button>
+              <div style={{ height: 1, background: 'var(--border-main)', margin: '8px 0' }} />
+              <button role="menuitem" onClick={() => { setShowProfileMenu(false); if (onLogout) onLogout(); }} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '8px 10px', background: 'none', border: 'none', color: 'var(--logout-color, #d32f2f)', cursor: 'pointer', fontWeight: 700 }}>Logout</button>
+            </div>
+          )}
           </div>
         </div>
       </div>

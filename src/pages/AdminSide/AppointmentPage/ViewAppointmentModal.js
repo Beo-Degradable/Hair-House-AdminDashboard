@@ -1,3 +1,4 @@
+// ViewAppointmentModal: read-only details view.
 import React from 'react';
 
 export default function ViewAppointmentModal({ appointment, open = false, onClose = () => {} }) {

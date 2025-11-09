@@ -1,12 +1,9 @@
+// Admin account settings: resolve display name from user doc/email, provide password change (reauth + update) and sign out.
 import React, { useEffect, useState, useContext } from 'react';
 import { auth, db } from '../../firebase';
-import { onAuthStateChanged } from 'firebase/auth';
+import { onAuthStateChanged, EmailAuthProvider, reauthenticateWithCredential, updatePassword, sendPasswordResetEmail } from 'firebase/auth';
 import { doc, onSnapshot, collection, query, where, limit } from 'firebase/firestore';
 import { AuthContext } from '../../context/AuthContext';
-import { getFunctions, httpsCallable } from 'firebase/functions';
-
-// Minimal Account Settings page that reads the user's name from Firestore `users` collection
-// and displays it above the email. Keeps layout from the screenshot.
 
 const styles = {
   page: { padding: 24, maxWidth: 840, margin: '0 auto', color: '#ffd54f', fontFamily: 'Inter, sans-serif' },
@@ -21,25 +18,21 @@ const styles = {
   activityItem: { background: 'rgba(255,255,255,0.02)', padding: 10, borderRadius: 8, marginBottom: 8 }
 };
 
+// Component: Admin account data & password management
 export default function AccountSettingsPage() {
   const { setRole } = useContext(AuthContext);
   const [displayName, setDisplayName] = useState('—');
   const [email, setEmail] = useState('');
   const [changeMode, setChangeMode] = useState(null); // null | 'password'
+  const [currentPw, setCurrentPw] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [otpSent, setOtpSent] = useState(false);
-  const [otpCode, setOtpCode] = useState('');
   const [status, setStatus] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const functions = getFunctions();
-
-  // Helper: format a display name from the email local part as a sensible fallback
   const nameFromEmail = (em) => {
     if (!em) return '';
     const local = em.split('@')[0] || '';
-    // replace dots/underscores with spaces and capitalize words
     return local
       .replace(/[._]+/g, ' ')
       .split(' ')
@@ -58,7 +51,6 @@ export default function AccountSettingsPage() {
         unsubUserDoc = onSnapshot(userDocRef, (snap) => {
           if (snap.exists()) {
             const data = snap.data();
-            // Prefer the explicit `name` field on the users document
             if (data.name && String(data.name).trim()) {
               setDisplayName(String(data.name).trim());
             } else {
@@ -66,8 +58,6 @@ export default function AccountSettingsPage() {
               setDisplayName(name || nameFromEmail(u.email) || '—');
             }
           } else {
-            // Fallback: some projects store users with auto-generated doc ids.
-            // Query users collection by email and use the first matching doc.
             try {
               const q = query(collection(db, 'users'), where('email', '==', u.email || ''), limit(1));
               unsubQuery = onSnapshot(q, (qsnap) => {
@@ -110,10 +100,8 @@ export default function AccountSettingsPage() {
   ];
 
   const avatarInitial = (displayName && displayName[0]) || 'A';
-  // Resolve avatar: prefer auth.currentUser.photoURL (Google account image) then Firestore/user avatar, then initials
   const resolvedAvatarUrl = auth?.currentUser?.photoURL || null;
 
-  // Responsive: shorten email for narrow screens
   const [isNarrow, setIsNarrow] = useState(false);
   useEffect(() => {
     const check = () => setIsNarrow(window.innerWidth < 520);
@@ -141,7 +129,6 @@ export default function AccountSettingsPage() {
         <div style={styles.headerRow}>
           <div aria-hidden>
             {resolvedAvatarUrl ? (
-              // show remote image, fallback to initials if it fails
               <img src={resolvedAvatarUrl} alt={displayName || 'Profile'} onError={(e) => { e.currentTarget.style.display = 'none'; }} style={{ width: 64, height: 64, borderRadius: '50%', objectFit: 'cover', border: '2px solid rgba(255,255,255,0.04)' }} />
             ) : (
               <div style={styles.avatar} aria-hidden>{avatarInitial}</div>
@@ -187,70 +174,50 @@ export default function AccountSettingsPage() {
         ) : (
           <div>
             <div style={{ fontWeight: 700, marginBottom: 8, color: '#ffd54f' }}>Change password</div>
-
             <div style={{ display: 'grid', gap: 8, maxWidth: 520 }}>
+              <label style={{ color: '#ddd' }}>Current password</label>
+              <input type="password" value={currentPw} onChange={(e) => setCurrentPw(e.target.value)} />
+
               <label style={{ color: '#ddd' }}>New password</label>
               <input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
-
               <label style={{ color: '#ddd' }}>Re-enter new password</label>
               <input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
 
-              {!otpSent ? (
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <button
-                    style={{ ...styles.btn, ...styles.btnSecondary }}
-                    onClick={async () => {
-                      setStatus('');
-                      if (!newPassword) return setStatus('Enter a new password');
-                      if (newPassword !== confirmPassword) return setStatus('Passwords do not match');
-                      setLoading(true);
-                      try {
-                        const fn = httpsCallable(functions, 'sendOtpForAccountAction');
-                        await fn({ action: 'updatePassword', email });
-                        setOtpSent(true);
-                        setStatus('OTP sent to your email');
-                      } catch (e) {
-                        console.error('sendOtp failed', e);
-                        setStatus('Failed to send OTP');
-                      } finally { setLoading(false); }
-                    }}
-                  >
-                    Send OTP
-                  </button>
-
-                  <button style={{ ...styles.btn }} onClick={() => setChangeMode(null)}>Cancel</button>
-                </div>
-              ) : (
-                <div style={{ display: 'grid', gap: 8 }}>
-                  <label style={{ color: '#ddd' }}>Enter OTP</label>
-                  <input value={otpCode} onChange={(e) => setOtpCode(e.target.value)} />
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <button
-                      style={{ ...styles.btn, ...styles.btnSecondary }}
-                      onClick={async () => {
-                        setStatus('');
-                        if (!otpCode) return setStatus('Enter the OTP');
-                        setLoading(true);
-                        try {
-                          const fn = httpsCallable(functions, 'verifyOtpForAccountAction');
-                          await fn({ action: 'updatePassword', code: otpCode, newPassword });
-                          setStatus('Password updated successfully');
-                          // reset
-                          setOtpSent(false); setOtpCode(''); setNewPassword(''); setConfirmPassword(''); setChangeMode(null);
-                        } catch (e) {
-                          console.error('verifyOtp failed', e);
-                          setStatus('Invalid OTP or failed to update password');
-                        } finally { setLoading(false); }
-                      }}
-                    >
-                      Verify & Save
-                    </button>
-
-                    <button style={{ ...styles.btn }} onClick={() => { setOtpSent(false); setOtpCode(''); }}>Cancel</button>
-                  </div>
-                </div>
-              )}
-
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
+                <button
+                  style={{ ...styles.btn, ...styles.btnSecondary }}
+                  disabled={loading}
+                  onClick={async () => {
+                    setStatus('');
+                    if (!currentPw) return setStatus('Enter current password');
+                    if (!newPassword) return setStatus('Enter a new password');
+                    if (newPassword !== confirmPassword) return setStatus('Passwords do not match');
+                    setLoading(true);
+                    try {
+                      const cred = EmailAuthProvider.credential(email, currentPw);
+                      await reauthenticateWithCredential(auth.currentUser, cred);
+                      await updatePassword(auth.currentUser, newPassword);
+                      setStatus('Password updated successfully');
+                      setCurrentPw(''); setNewPassword(''); setConfirmPassword(''); setChangeMode(null);
+                    } catch (e) {
+                      console.error('password update error', e);
+                      setStatus(e?.message || 'Failed to update password');
+                    } finally { setLoading(false); }
+                  }}
+                >
+                  {loading ? 'Saving…' : 'Update password'}
+                </button>
+                <button
+                  style={{ ...styles.btn, ...styles.btnSecondary }}
+                  onClick={async () => {
+                    setStatus('');
+                    try { await sendPasswordResetEmail(auth, email); setStatus('Reset email sent'); } catch (e) { setStatus(e?.message || 'Failed to send reset email'); }
+                  }}
+                >
+                  Forgot password? Email reset link
+                </button>
+                <button style={{ ...styles.btn }} onClick={() => setChangeMode(null)}>Cancel</button>
+              </div>
               {status && <div style={{ marginTop: 8, color: '#ffd54f' }}>{status}</div>}
             </div>
           </div>

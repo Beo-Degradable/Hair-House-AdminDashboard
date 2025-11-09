@@ -1,8 +1,5 @@
+// Admin dashboard shell: global theme, topbar, KPI/graphs and recent activity layout.
 import React, { useState } from "react";
-
-// Note: responsive layout for the TopBar/nav/drawer is handled in `src/index.css`.
-// Removed the old JS-injected styles that forced the nav to stack vertically on small screens
-// so CSS media queries in `index.css` can control behavior consistently.
 import { useNavigate } from "react-router-dom";
 
 import TopBar from "./TopBar";
@@ -81,7 +78,7 @@ const AdminDashboard = ({ onLogout, page }) => {
                 </div>
               </aside>
             </div>
-            {/* ...other dashboard content... */}
+            {/* Additional dashboard widgets can be added below */}
           </>
         )}
       </main>

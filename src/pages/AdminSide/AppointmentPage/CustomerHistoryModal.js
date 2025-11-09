@@ -1,3 +1,4 @@
+// CustomerHistoryModal: merged current appointment snapshot + history entries with filters + export.
 import React, { useEffect, useMemo, useState } from 'react';
 import { collection, onSnapshot, query as q, orderBy, where, getDocs, deleteDoc } from 'firebase/firestore';
 import { db } from '../../../firebase';
@@ -148,7 +149,6 @@ export default function CustomerHistoryModal({ open = false, onClose = () => {} 
 				<div style={{ background: 'var(--bg-drawer, white)', color: 'var(--text-main, #181818)', padding: 20, borderRadius: 8, width: '95%', maxWidth: 1000, maxHeight: '85vh', overflow: 'hidden', border: '1px solid var(--border-main, #ddd)', fontSize: 13 }} onClick={(e) => e.stopPropagation()}>
 						<div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
 							<h3 style={{ margin: 0, textAlign: 'left' }}>Booking history</h3>
-																				{/* Action dropdown moved next to status filter below */}
 						</div>
 
 						<div style={{ display: 'flex', gap: 8, marginTop: 12, marginBottom: 12, alignItems: 'center', color: 'var(--text-secondary, #fffbe6)' }}>

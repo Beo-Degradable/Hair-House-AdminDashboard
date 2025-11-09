@@ -1,3 +1,4 @@
+// InventoryAdjustModal: apply delta adjustment to a product for a branch.
 import React, { useState } from 'react';
 import { adjustInventoryRecord } from '../../../utils/inventoryActions';
 import { db } from '../../../firebase';
@@ -21,7 +22,7 @@ export default function InventoryAdjustModal({ open, onClose, product = {}, bran
     try {
       const auth = getAuth();
       const user = auth.currentUser;
-      // branch fallback: try product default branch or provided branch
+  // Branch fallback
       const branchKey = branch || initialBranch || (branches && branches[0] && (branches[0].id || branches[0].name)) || '';
       await adjustInventoryRecord(db, product.id, branchKey, d, user, reason);
       if (onDone) onDone();

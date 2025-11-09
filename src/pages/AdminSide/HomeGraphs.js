@@ -1,7 +1,7 @@
 import React from 'react';
 import RevenueWidget from '../../components/RevenueWidget';
 
-// HomeGraphs: show revenue graph only to avoid duplicating KPI tiles above.
+// HomeGraphs — render the revenue graph (KPI tiles live elsewhere)
 const HomeGraphs = ({ branch = null }) => {
   return (
     <div style={{ display: 'block', gap: 16 }}>

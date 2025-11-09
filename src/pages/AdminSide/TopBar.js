@@ -1,5 +1,7 @@
 
 
+// Admin top navigation bar: responsive nav buttons, notifications indicator,
+// avatar/profile menu, drawer with settings & dark mode toggle.
 import React, { useState, useEffect, useRef, useContext } from "react";
 import { AuthContext } from "../../context/AuthContext";
 import { auth, db } from "../../firebase";
@@ -28,12 +30,10 @@ const drawerBtnStyle = {
 };
 
 const TopBar = ({ onLogout, darkMode, setDarkMode, settingsOpen, setSettingsOpen }) => {
-  // router/context/hooks used by TopBar
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useContext(AuthContext);
 
-  // UI state & refs
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const profileBtnRef = useRef(null);
@@ -43,14 +43,14 @@ const TopBar = ({ onLogout, darkMode, setDarkMode, settingsOpen, setSettingsOpen
   const moreBtnRef = useRef(null);
   const moreMenuRef = useRef(null);
 
-  // Responsive nav: collapse to menu icon on mobile
+  // Responsive nav breakpoint detection
 const [isWide, setIsWide] = useState(() => {
   if (typeof window === 'undefined') return true;
   try { return window.matchMedia('(min-width: 900px)').matches; } catch { return window.innerWidth >= 900; }
 });
 const [isWindows, setIsWindows] = useState(() => typeof navigator !== 'undefined' ? /Win/i.test(navigator.userAgent) : false);
 
-// track a numeric viewport width to compute drawer width for mobile devices
+  // Track viewport width for drawer sizing
 const [viewportWidth, setViewportWidth] = useState(() => typeof window !== 'undefined' ? window.innerWidth : 1200);
 
 useEffect(() => {
@@ -72,14 +72,11 @@ useEffect(() => {
   };
 }, []);
 
-  // Helper to shorten long names/emails on small screens
   const shorten = (str, max = 12) => {
     if (!str) return "";
     return str.length > max ? `${str.slice(0, max).trim()}...` : str;
   };
 
-  // Derive canonical name/email from possible user fields and provide
-  // better truncation for names (First + last initial) and emails
   const fullName = user?.name || user?.displayName || user?.fullName || 'Admin';
   const fullEmail = user?.email || user?.mail || '';
 
@@ -105,17 +102,15 @@ useEffect(() => {
     return `${local.slice(0, max).trim()}...`;
   }
 
-  // compute drawer width: on wide show fixed drawerWidth px, on small screens show 85% of viewport capped between 220 and 360px
+  // Compute drawer width (fixed on wide screens, dynamic on small)
   const computedDrawerWidth = isWide
     ? `${drawerWidth}px`
     : `${Math.min(360, Math.max(220, Math.floor(viewportWidth * 0.86)))}px`;
 
-  // Notifications: show a red dot if there's a history entry newer than last seen
   const [hasNewNotifications, setHasNewNotifications] = useState(false);
   const [latestNotifTs, setLatestNotifTs] = useState(null);
 
   useEffect(() => {
-    // subscribe to the most recent history entry
     try {
       const histCol = collection(db, 'history');
       const histQ = q(histCol, orderBy('timestamp', 'desc'), limit(1));
@@ -129,7 +124,6 @@ useEffect(() => {
         const data = doc.data();
         const ts = data?.timestamp ? (data.timestamp.toMillis ? data.timestamp.toMillis() : (new Date(data.timestamp)).getTime()) : null;
         setLatestNotifTs(ts);
-        // read last seen from localStorage
         const lastSeen = parseInt(localStorage.getItem('lastSeenNotifications') || '0', 10) || 0;
         if (!ts) {
           setHasNewNotifications(false);
@@ -146,7 +140,7 @@ useEffect(() => {
     }
   }, []);
 
-  // mark notifications seen when navigating to /notifications
+  // Mark notifications seen when visiting /notifications
   useEffect(() => {
     if (location?.pathname === '/notifications') {
       try {
@@ -161,13 +155,10 @@ useEffect(() => {
     }
   }, [location && location.pathname, latestNotifTs]);
 
-  // Always use shortened display values to avoid layout overflow. Full values remain
-  // available via the title attribute (hover / screen readers).
   const nameToDisplay = shortenName(fullName, 12);
   const emailToDisplay = shortenEmail(fullEmail, 14);
 
-  // Resolve avatar URL from several possible sources: context user, user.photoURL, providerData, or Firebase auth currentUser
-  // Helper: compute MD5 hash of the email for Gravatar fallback.
+  // Resolve avatar URL; MD5 email hash for gravatar fallback
   const md5Hex = async (str) => {
     if (!str) return '';
     // try SubtleCrypto first (modern browsers)
@@ -181,8 +172,7 @@ useEffect(() => {
         // fall through to small JS implementation below
       }
     }
-    // lightweight JS fallback MD5 (small, permissive implementation) for environments without SubtleCrypto
-    // Minimal adapted implementation - sufficient for email hashing for Gravatar.
+  // Fallback MD5 implementation (minimal) when SubtleCrypto unavailable
     function cmn(q, a, b, x, s, t) { a = (a + q + x + t) & 0xffffffff; return ((a << s) | (a >>> (32 - s))) + b; }
     function ff(a, b, c, d, x, s, t) { return cmn((b & c) | (~b & d), a, b, x, s, t); }
     function gg(a, b, c, d, x, s, t) { return cmn((b & d) | (c & ~d), a, b, x, s, t); }
@@ -292,8 +282,7 @@ useEffect(() => {
     return () => { mounted = false; };
   }, [user && user.email, auth && auth.currentUser && auth.currentUser.email]);
 
-  // Prefer the authenticated provider's photo (e.g. Google account photo)
-  // then providerData, then any explicit user avatar stored in Firestore, then Gravatar.
+  // Photo preference order: provider photo -> user.photoURL -> stored avatar -> gravatar
   const avatarUrl = auth?.currentUser?.photoURL
     || (auth?.currentUser?.providerData && auth.currentUser.providerData[0] && auth.currentUser.providerData[0].photoURL)
     || user?.photoURL
@@ -302,7 +291,7 @@ useEffect(() => {
     || gravatarUrl
     || '';
 
-  // Debug runtime values briefly to help trace missing avatar issues (remove in production)
+  // Debug avatar resolution (dev aid)
   useEffect(() => {
     try {
       // eslint-disable-next-line no-console
@@ -310,7 +299,7 @@ useEffect(() => {
     } catch (e) {}
   }, [avatarUrl, user]);
 
-  // track if remote avatar failed to load so we can show initials fallback
+  // Track broken avatar to show initials
   const [avatarBroken, setAvatarBroken] = useState(false);
 
   const getInitials = (name) => {
@@ -320,7 +309,7 @@ useEffect(() => {
     return (parts[0][0] + (parts[parts.length - 1][0] || '')).toUpperCase();
   };
 
-  // Log avatar load failures (helps diagnose CORS/404/redirect issues)
+  // Log avatar load failures (diagnostic)
   const handleAvatarError = (url, ev) => {
     try {
       // eslint-disable-next-line no-console
@@ -329,7 +318,7 @@ useEffect(() => {
     setAvatarBroken(true);
   };
 
-  // helper to show debug info when user alt-clicks the avatar (quick diagnostic)
+  // Alt-click avatar to show debug info
   const showAvatarDebug = () => {
     const info = {
       email: fullEmail,
@@ -350,7 +339,7 @@ useEffect(() => {
     } catch (e) {}
   };
 
-  // close "More" menu when clicking outside
+  // Close More menu on outside click
   useEffect(() => {
     if (!showMore) return;
     const onDown = (e) => {
@@ -365,13 +354,12 @@ useEffect(() => {
     return () => window.removeEventListener('mousedown', onDown);
   }, [showMore]);
 
-  // Define which items show inline in the topbar (in this order)
+  // Primary inline nav order
   const primaryOrder = ["Home", "Appointments", "Inventory"];
   const primaryNav = primaryOrder.map(label => navButtons.find(b => b.label === label)).filter(Boolean);
   const moreNav = navButtons.filter(b => !primaryOrder.includes(b.label));
 
-  // Helper to check if a nav item is active. We treat exact path matches as active,
-  // and also mark active if the current pathname starts with the nav path (for nested routes).
+  // Active path check (exact or nested)
   const isActivePath = (path) => {
     try {
       const current = location?.pathname || '/';
@@ -564,7 +552,7 @@ useEffect(() => {
                     >
                       {btn.label}
                     </button>
-                    {/* small red dot for notifications on the Users/Notifications nav */}
+                    {/* Notifications bell, profile avatar, and user display */}
                     {btn.label === 'Users' && (
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 6 }}>
                         {/* Profile / Avatar button */}
