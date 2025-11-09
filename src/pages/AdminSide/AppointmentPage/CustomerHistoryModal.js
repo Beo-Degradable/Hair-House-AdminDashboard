@@ -121,7 +121,7 @@ export default function CustomerHistoryModal({ open = false, onClose = () => {} 
 		const rows = filtered.map(it => {
 			const date = it.when ? it.when.toLocaleString() : '';
 			const action = it.action ? ` (${it.action})` : '';
-			return `<tr><td>${date}</td><td>${it.serviceName || ''}</td><td>${it.stylistName || ''}</td><td>${it.status || ''}${action}</td><td>${it.source || ''}</td></tr>`;
+			return `<tr><td>${date}</td><td>${it.serviceName || ''}</td><td>${it.stylistName || ''}</td><td>${it.status || ''}${action}</td></tr>`;
 		}).join('');
 		const html = `
 			<html>
@@ -131,7 +131,7 @@ export default function CustomerHistoryModal({ open = false, onClose = () => {} 
 				<body>
 					<h2>Booking history</h2>
 					<table border="1" cellpadding="6" cellspacing="0">
-						<thead><tr><th>When</th><th>Service</th><th>Stylist</th><th>Status</th><th>Source</th></tr></thead>
+						<thead><tr><th>When</th><th>Service</th><th>Stylist</th><th>Status</th></tr></thead>
 						<tbody>${rows}</tbody>
 					</table>
 				</body>
@@ -145,7 +145,7 @@ export default function CustomerHistoryModal({ open = false, onClose = () => {} 
 	if (!open) return null;
 	return (
 			<div style={{ position: 'fixed', left:0, top:0, right:0, bottom:0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }} onClick={onClose}>
-				<div style={{ background: 'var(--bg-drawer, white)', color: 'var(--text-main, #181818)', padding: 20, borderRadius: 8, width: '95%', maxWidth: 1000, maxHeight: '85vh', overflow: 'hidden', border: '1px solid var(--border-main, #ddd)' }} onClick={(e) => e.stopPropagation()}>
+				<div style={{ background: 'var(--bg-drawer, white)', color: 'var(--text-main, #181818)', padding: 20, borderRadius: 8, width: '95%', maxWidth: 1000, maxHeight: '85vh', overflow: 'hidden', border: '1px solid var(--border-main, #ddd)', fontSize: 13 }} onClick={(e) => e.stopPropagation()}>
 						<div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
 							<h3 style={{ margin: 0, textAlign: 'left' }}>Booking history</h3>
 																				{/* Action dropdown moved next to status filter below */}
@@ -153,7 +153,7 @@ export default function CustomerHistoryModal({ open = false, onClose = () => {} 
 
 						<div style={{ display: 'flex', gap: 8, marginTop: 12, marginBottom: 12, alignItems: 'center', color: 'var(--text-secondary, #fffbe6)' }}>
 							<label style={{ display: 'block' }}>Filter status</label>
-							<select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+							<select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} style={{ padding: 4, fontSize: 12 }}>
 								<option value="all">All</option>
 								<option value="booked">booked</option>
 								<option value="completed">completed</option>
@@ -161,7 +161,7 @@ export default function CustomerHistoryModal({ open = false, onClose = () => {} 
 							</select>
 							<div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
 								<label style={{ margin: 0 }}>Action</label>
-								<select value={actionFilter} onChange={(e) => setActionFilter(e.target.value)} style={{ padding: 6 }}>
+								<select value={actionFilter} onChange={(e) => setActionFilter(e.target.value)} style={{ padding: 4, fontSize: 12 }}>
 									<option value="all">All</option>
 									<option value="update">Update</option>
 									<option value="delete">Delete</option>
@@ -169,7 +169,7 @@ export default function CustomerHistoryModal({ open = false, onClose = () => {} 
 								</select>
 							</div>
 							<div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
-								<button className="btn" onClick={openPrintWindow}>Export / Print</button>
+								<button className="btn" onClick={openPrintWindow} style={{ fontSize: 12, padding: '6px 10px' }}>Export / Print</button>
 								<button className="btn" onClick={async () => {
 									if (clearing) return;
 									if (!window.confirm('Clear all appointment history? This will permanently delete appointment history entries.')) return;
@@ -186,32 +186,30 @@ export default function CustomerHistoryModal({ open = false, onClose = () => {} 
 									} finally {
 										setClearing(false);
 									}
-								}} disabled={clearing}>
+								}} disabled={clearing} style={{ fontSize: 12, padding: '6px 10px' }}>
 									{clearing ? 'Clearing...' : 'Clear'}
 								</button>
-								<button className="btn" onClick={onClose}>Close</button>
+								<button className="btn" onClick={onClose} style={{ fontSize: 12, padding: '6px 10px' }}>Close</button>
 							</div>
 						</div>
 
 				<div style={{ overflowX: 'auto', overflowY: 'auto' }}>
-					<table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 700 }}>
+					<table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 700, fontSize: 12 }}>
 						<thead>
 							<tr style={{ borderBottom: '1px solid #ddd' }}>
-								<th style={{ textAlign: 'left', padding: 8 }}>When</th>
-								<th style={{ textAlign: 'left', padding: 8 }}>Service</th>
-								<th style={{ textAlign: 'left', padding: 8 }}>Stylist</th>
-								<th style={{ textAlign: 'left', padding: 8 }}>Status</th>
-								<th style={{ textAlign: 'left', padding: 8 }}>Source</th>
+								<th style={{ textAlign: 'left', padding: 6 }}>When</th>
+								<th style={{ textAlign: 'left', padding: 6 }}>Service</th>
+								<th style={{ textAlign: 'left', padding: 6 }}>Stylist</th>
+								<th style={{ textAlign: 'left', padding: 6 }}>Status</th>
 							</tr>
 						</thead>
 						<tbody>
 							{filtered.map(it => (
-								<tr key={`${it.source}-${it.id}`} style={{ borderBottom: '1px solid #eee' }}>
-									<td style={{ padding: 8 }}>{it.when ? it.when.toLocaleString() : ''}</td>
-									<td style={{ padding: 8 }}>{it.serviceName}</td>
-									<td style={{ padding: 8 }}>{it.stylistName}</td>
-									<td style={{ padding: 8 }}>{it.status}{it.action ? ` (${it.action})` : ''}</td>
-									<td style={{ padding: 8 }}>{it.source}</td>
+								<tr key={`${it.id}-${it.action || ''}-${it.when ? it.when.getTime() : ''}`} style={{ borderBottom: '1px solid #eee' }}>
+									<td style={{ padding: 6 }}>{it.when ? it.when.toLocaleString() : ''}</td>
+									<td style={{ padding: 6 }}>{it.serviceName}</td>
+									<td style={{ padding: 6 }}>{it.stylistName}</td>
+									<td style={{ padding: 6 }}>{it.status}{it.action ? ` (${it.action})` : ''}</td>
 								</tr>
 							))}
 						</tbody>

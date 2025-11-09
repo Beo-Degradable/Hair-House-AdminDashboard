@@ -152,10 +152,6 @@ const TopBar = ({ onLogout, darkMode, setDarkMode, settingsOpen, setSettingsOpen
     <>
       <div className="stylist-topbar" style={{ height: 56, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 12px', gap: 12, background: 'var(--bg-drawer)', color: 'var(--icon-main)', position: 'sticky', top: 0, zIndex: 1400 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <button onClick={() => navigate('/stylist')} aria-label="Home" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 36, height: 36, borderRadius: 8, background: 'var(--border-main)', color: 'var(--text-main)', border: 'none', cursor: 'pointer', fontWeight: 800, marginRight: 12 }}>
-            <span style={{ fontSize: 12, lineHeight: 1 }}>LOGO</span>
-          </button>
-
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             {NAV.map(n => {
               const active = isActive(n.path);
@@ -184,7 +180,7 @@ const TopBar = ({ onLogout, darkMode, setDarkMode, settingsOpen, setSettingsOpen
               );
             })}
           </div>
-        </div>
+  </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           {/* Notifications Bell Icon */}

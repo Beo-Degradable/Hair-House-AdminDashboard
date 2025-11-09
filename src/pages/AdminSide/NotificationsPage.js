@@ -105,11 +105,52 @@ const NotificationsPage = () => {
             return null;
           };
 
+          // helper to format date (startDate/endDate may be Firestore Timestamp or JS Date)
+          const fmtDate = (d) => {
+            if (!d) return '';
+            const date = d?.toDate ? d.toDate() : (d instanceof Date ? d : new Date(d));
+            if (!date || isNaN(date.getTime())) return '';
+            const y = date.getFullYear();
+            const m = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${y}-${m}-${day}`;
+          };
+
+          // promotion specific formatting
+          const formatPromotionCreate = (after) => {
+            if (!after) return null;
+            return `New promotion "${after.title || it.docId}" (${after.type || 'Type'}) for ${after.branch || 'branch'}${after.serviceName ? ` • Service: ${after.serviceName}` : ''} (${fmtDate(after.startDate)} → ${fmtDate(after.endDate)}) status: ${after.status || 'active'}.`;
+          };
+          const formatPromotionUpdate = (before, after) => {
+            if (!before || !after) return null;
+            const changes = [];
+            if (before.title !== after.title) changes.push(`title: "${before.title || ''}" → "${after.title || ''}"`);
+            if (before.serviceName !== after.serviceName) changes.push(`service: ${before.serviceName || 'none'} → ${after.serviceName || 'none'}`);
+            if (before.branch !== after.branch) changes.push(`branch: ${before.branch || ''} → ${after.branch || ''}`);
+            if (before.type !== after.type) changes.push(`type: ${before.type || ''} → ${after.type || ''}`);
+            const bStart = fmtDate(before.startDate); const aStart = fmtDate(after.startDate);
+            const bEnd = fmtDate(before.endDate); const aEnd = fmtDate(after.endDate);
+            if (bStart !== aStart || bEnd !== aEnd) changes.push(`dates: ${bStart}-${bEnd} → ${aStart}-${aEnd}`);
+            if (before.status !== after.status) changes.push(`status: ${before.status || ''} → ${after.status || ''}`);
+            if (changes.length === 0) return `Promotion "${after.title || before.title || it.docId}" updated.`;
+            return `Promotion "${after.title || before.title || it.docId}" updated: ${changes.join('; ')}.`;
+          };
+
+          const promotionMessage = (() => {
+            if (it.collection !== 'promotions') return null;
+            if (it.action === 'create') return formatPromotionCreate(it.after);
+            if (it.action === 'update') return formatPromotionUpdate(it.before, it.after);
+            if (it.action === 'delete') return `Promotion "${it.before?.title || it.docId}" was removed.`;
+            return `Promotion activity on "${it.after?.title || it.before?.title || it.docId}".`;
+          })();
+
           return (
             <div key={it.id} style={{ border: '1px solid var(--border-main)', borderRadius: 8, padding: 12 }}>
               <div style={{ fontWeight: 700, marginBottom: 6 }}>{header}</div>
               <div style={{ marginTop: 8 }}>
-                {isCancelRequest && it.collection === 'appointments' ? (
+                {promotionMessage ? (
+                  promotionMessage
+                ) : isCancelRequest && it.collection === 'appointments' ? (
                   (() => {
                     const custName = it.after?.clientName || it.after?.client || it.before?.clientName || it.before?.client || it.docId;
                     const reason = it.reason || it.after?.reason || it.data?.reason || it.meta?.reason || '';

@@ -1,8 +1,7 @@
 {
     "vscode-janus-debug.uploadOnSave": [
-        "EditAppointmentModal",
-        "NewAppointmentModal",
-        "App",
-        "StylistHome"
+    "EditAppointmentModal",
+    "App",
+    "StylistHome"
     ]
 }

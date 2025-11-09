@@ -1,6 +1,5 @@
 import React, { useMemo, useState, useEffect, useContext } from 'react';
 // firebase imports not needed in this file
-import NewAppointmentModal from './NewAppointmentModal';
 import { validateForm } from '../../../utils/validators';
 import useAppointments from '../../../hooks/useAppointments';
 import AppointmentForm from './AppointmentForm';
@@ -33,7 +32,7 @@ export default function AppointmentPage() {
   const [showForm, setShowForm] = useState(false);
   const { user: authUser } = useContext(AuthContext);
   const [viewing, setViewing] = useState(null);
-  const [modalOpen, setModalOpen] = useState(false);
+  // New appointments are now created from the external app; local creation disabled
   const [historyOpen, setHistoryOpen] = useState(false);
 
   const [filterDate, setFilterDate] = useState(() => {
@@ -225,14 +224,14 @@ export default function AppointmentPage() {
 
   const AppointmentRow = ({ a }) => (
     <tr key={a.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.12)' }}>
-      <td style={{ padding: 12 }}>{formatAppointmentRange(a)}</td>
-      <td style={{ padding: 12 }}>{a.clientName}</td>
-      <td style={{ padding: 12 }}>{a.email || a.clientEmail || ''}</td>
-      <td style={{ padding: 12 }}>{a.serviceName}</td>
-      <td style={{ padding: 12 }}>{a.stylistName}</td>
-      <td style={{ padding: 12 }}>{a.branch}</td>
-  <td style={{ padding: 12, textTransform: 'capitalize' }}>{String(a.status || '').toLowerCase() === 'done' ? 'completed' : a.status}</td>
-      <td style={{ padding: 12 }}>
+      <td style={{ padding: 8 }}>{formatAppointmentRange(a)}</td>
+      <td style={{ padding: 8 }}>{a.clientName}</td>
+      <td style={{ padding: 8, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={a.email || a.clientEmail || ''}>{a.email || a.clientEmail || ''}</td>
+      <td style={{ padding: 8 }}>{a.serviceName}</td>
+      <td style={{ padding: 8 }}>{a.stylistName}</td>
+      <td style={{ padding: 8 }}>{a.branch}</td>
+  <td style={{ padding: 8, textTransform: 'capitalize' }}>{String(a.status || '').toLowerCase() === 'done' ? 'completed' : a.status}</td>
+      <td style={{ padding: 8 }}>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
           <button className="btn" onClick={() => handleView(a)}>View</button>
           <button className="btn btn-ghost" onClick={() => handleEdit(a)}>Edit</button>
@@ -292,13 +291,12 @@ export default function AppointmentPage() {
   }
 
   return (
-    <div style={{ padding: 24, width: '100%' }}>
-      <div className="appointments-header" style={{ marginBottom: 16, gap: 12 }}>
+  <div style={{ padding: 24, width: '100%', boxSizing: 'border-box' }}>
+      <div className="appointments-header" style={{ marginBottom: 20 }}>
         <h2 className="appointments-title" style={{ margin: 0 }}>Appointments</h2>
-        <div className="appointments-header-actions" style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <button className="btn history-btn" onClick={() => setHistoryOpen(true)}>History</button>
-          <button className="btn btn-primary new-appointment-btn" onClick={() => { setEditing(null); setShowForm(false); /* open our modal */ setModalOpen(true); }}>New appointment</button>
-        </div>
+      </div>
+      <div className="appointments-header-actions" style={{ marginBottom: 20 }}>
+        <button className="btn history-btn" onClick={() => setHistoryOpen(true)}>History</button>
       </div>
 
       <div style={{ display: 'flex', gap: 12, marginBottom: 12 }}>
@@ -312,18 +310,19 @@ export default function AppointmentPage() {
       {loading && <div>Loading...</div>}
       {error && <div style={{ color: 'var(--danger)' }}>Error: {String(error)}</div>}
 
-      <div style={{ overflowX: 'auto' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+  <div style={{ background: 'var(--bg-drawer)', border: '1px solid var(--border-main)', borderRadius: 12, padding: 8, marginTop: 4, maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ overflowX: 'auto', overflowY: 'auto', flex: 1 }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, lineHeight: 1.25, tableLayout: 'fixed' }}>
           <thead>
             <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.12)' }}>
-              <th style={{ textAlign: 'left', padding: 12 }}>When</th>
-              <th style={{ textAlign: 'left', padding: 12 }}>Name</th>
-              <th style={{ textAlign: 'left', padding: 12 }}>Email</th>
-              <th style={{ textAlign: 'left', padding: 12 }}>Service</th>
-              <th style={{ textAlign: 'left', padding: 12 }}>Stylist</th>
-              <th style={{ textAlign: 'left', padding: 12 }}>Branch</th>
-              <th style={{ textAlign: 'left', padding: 12 }}>Status</th>
-              <th style={{ textAlign: 'left', padding: 12 }}>Actions</th>
+              <th style={{ textAlign: 'left', padding: 8, width: 140 }}>When</th>
+              <th style={{ textAlign: 'left', padding: 8, width: 120 }}>Name</th>
+              <th style={{ textAlign: 'left', padding: 8, width: 160 }}>Email</th>
+              <th style={{ textAlign: 'left', padding: 8, width: 110 }}>Service</th>
+              <th style={{ textAlign: 'left', padding: 8, width: 110 }}>Stylist</th>
+              <th style={{ textAlign: 'left', padding: 8, width: 90 }}>Branch</th>
+              <th style={{ textAlign: 'left', padding: 8, width: 90 }}>Status</th>
+              <th style={{ textAlign: 'left', padding: 8, width: 150 }}>Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -331,7 +330,8 @@ export default function AppointmentPage() {
               <AppointmentRow key={a.id} a={a} />
             ))}
           </tbody>
-        </table>
+          </table>
+        </div>
       </div>
 
       {showForm && (
@@ -360,14 +360,7 @@ export default function AppointmentPage() {
         />
       )}
 
-      {modalOpen && (
-        <NewAppointmentModal
-          open={modalOpen}
-          onClose={() => setModalOpen(false)}
-          defaultBranch={filterBranch === 'all' ? '' : filterBranch}
-          defaultStartAt={filterDate}
-        />
-      )}
+      {/* NewAppointmentModal removed: appointments sourced externally */}
     </div>
   );
 }

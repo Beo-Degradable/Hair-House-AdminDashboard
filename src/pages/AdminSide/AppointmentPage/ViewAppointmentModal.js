@@ -5,7 +5,7 @@ export default function ViewAppointmentModal({ appointment, open = false, onClos
   return (
     <div style={{ display: 'block' }}>
       <div style={{ position: 'fixed', left: 0, top: 0, right: 0, bottom: 0, background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={onClose}>
-        <div style={{ background: 'var(--surface)', color: 'var(--text-primary)', padding: 20, borderRadius: 8, width: 420, border: '1px solid var(--border-main)' }} onClick={(e) => e.stopPropagation()}>
+  <div style={{ background: 'var(--surface)', color: 'var(--text-primary)', padding: 20, borderRadius: 8, width: 'min(420px, 92%)', border: '1px solid var(--border-main)' }} onClick={(e) => e.stopPropagation()}>
           <h3 style={{ marginTop: 0 }}>Appointment details</h3>
           <div><strong>Client:</strong> {appointment.clientName} {appointment.clientEmail ? `(${appointment.clientEmail})` : ''}</div>
           <div><strong>Service:</strong> {appointment.serviceName}</div>

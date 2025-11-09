@@ -1,9 +1,10 @@
-import React, { useContext, useEffect, useMemo, useState } from 'react';
+import React, { useContext, useEffect, useMemo, useRef, useState } from 'react';
 import useAppointments from '../../../hooks/useAppointments';
 import { AuthContext } from '../../../context/AuthContext';
 import { formatCurrency } from '../../../utils/formatters';
 import { collection, onSnapshot, query as q, orderBy, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../../firebase';
+import { adjustBranchQty, adjustInventoryRecord } from '../../../utils/inventoryActions';
 
 // Small, dependency-free calendar helpers
 const startOfMonth = (d) => new Date(d.getFullYear(), d.getMonth(), 1);
@@ -72,6 +73,141 @@ const StylistAppointmentPage = () => {
     return () => unsub();
   }, []);
 
+  // Track processed appointments to avoid duplicating updates in one session
+  const processedAutoComplete = useRef(new Set());
+  const processedRevenue = useRef(new Set());
+  const processedDeduct = useRef(new Set());
+
+  // Helper: find matching service doc for an appointment
+  const resolveServiceForAppointment = (a) => {
+    if (!a) return null;
+    const sid = a.serviceId || a.serviceID || a.service_id || null;
+    if (sid) {
+      const byId = services.find(s => String(s.id) === String(sid));
+      if (byId) return byId;
+    }
+    if (Array.isArray(a.services) && a.services.length) {
+      for (const s of a.services) {
+        const found = services.find(x => String(x.id) === String(s.id || s.serviceId));
+        if (found) return found;
+      }
+      // fallback match by name
+      for (const s of a.services) {
+        const foundByName = services.find(x => String(x.name || x.title || '').toLowerCase() === String(s.name || s.title || '').toLowerCase());
+        if (foundByName) return foundByName;
+      }
+    }
+    if (a.service) {
+      const byName = services.find(s => String(s.name || s.title || '').toLowerCase() === String(a.service).toLowerCase());
+      if (byName) return byName;
+    }
+    return null;
+  };
+
+  // Helper: extract products used from a service doc
+  const extractProductsUsed = (svc) => {
+    if (!svc) return [];
+    const list = svc.productsUsed || svc.products || svc.materials || [];
+    const out = [];
+    (Array.isArray(list) ? list : []).forEach(it => {
+      const productId = it.productId || it.id || it.product || it.productID;
+      const qty = Number(it.qty ?? it.quantity ?? it.units ?? 0);
+      if (productId && qty) out.push({ productId, qty });
+    });
+    return out;
+  };
+
+  // Deduct inventory for an appointment based on its service definition
+  const deductProductsForAppointment = async (a, svc) => {
+    try {
+      const branchKey = a.branch || a.branchName || a.location || '';
+      if (!branchKey) return false;
+      const lines = extractProductsUsed(svc);
+      if (!lines.length) return false;
+      for (const line of lines) {
+        try {
+          await adjustBranchQty(db, line.productId, branchKey, -Math.abs(line.qty), user || null, `Appointment ${a.id} completed`);
+        } catch (err1) {
+          try {
+            await adjustInventoryRecord(db, line.productId, branchKey, -Math.abs(line.qty), user || null, `Appointment ${a.id} completed`);
+          } catch (err2) {
+            console.warn('Inventory adjust failed for product', line.productId, err2);
+          }
+        }
+      }
+      // flag as deducted
+      try { await updateAppointment(a.id, { inventoryDeducted: true }, a); } catch (e) { /* non-fatal */ }
+      return true;
+    } catch (e) {
+      console.warn('deductProductsForAppointment error', e);
+      return false;
+    }
+  };
+
+  // Ensure revenue and inventory deduction when an appointment becomes completed
+  const ensureRevenueAndDeduct = async (a) => {
+    const svc = resolveServiceForAppointment(a);
+    // Revenue
+    if (!a.revenueRecorded) {
+      try {
+        const amount = (typeof a.price === 'number' ? a.price : null) ?? (svc && typeof svc.price === 'number' ? svc.price : 0);
+        if (amount && amount > 0) {
+          await addDoc(collection(db, 'payments'), {
+            appointmentId: a.id,
+            serviceName: a.service || (svc ? svc.name : null) || null,
+            amount,
+            branch: a.branch || a.branchName || null,
+            createdBy: user ? (user.uid || null) : null,
+            createdAt: serverTimestamp(),
+            source: a.isWalkIn ? 'walkin' : 'auto'
+          });
+        }
+      } catch (e) {
+        console.warn('payments write failed', e);
+      }
+      try { await updateAppointment(a.id, { revenueRecorded: true }, a); } catch (e) {}
+    }
+    // Inventory deduction
+    if (!a.inventoryDeducted) {
+      await deductProductsForAppointment(a, svc);
+    }
+  };
+
+  // Auto-complete past appointments and trigger side-effects for completed ones
+  useEffect(() => {
+    if (!myAppointments || !myAppointments.length) return;
+    const now = Date.now();
+    myAppointments.forEach((a) => {
+      const id = a.id;
+      const startMs = a._start ? a._start.getTime() : (a.startTime && a.startTime.toDate ? a.startTime.toDate().getTime() : null);
+      const status = String(a.status || '').toLowerCase();
+
+      // If past and not completed/cancelled, auto-mark completed (once per session)
+      if (startMs && startMs < now && status !== 'completed' && status !== 'cancelled' && !processedAutoComplete.current.has(id)) {
+        processedAutoComplete.current.add(id);
+        (async () => {
+          try {
+            await updateAppointment(id, { status: 'completed' }, a);
+          } catch (e) {
+            console.warn('auto-complete update failed', e);
+          }
+          // After status change, ensure revenue/deduction
+          try { await ensureRevenueAndDeduct({ ...a, status: 'completed' }); } catch (_) {}
+        })();
+        return; // skip next checks in this iteration
+      }
+
+      // If already completed, ensure revenue/deduction (once per session)
+      if (status === 'completed') {
+        if (!processedRevenue.current.has(id) || !processedDeduct.current.has(id)) {
+          processedRevenue.current.add(id);
+          processedDeduct.current.add(id);
+          (async () => { try { await ensureRevenueAndDeduct(a); } catch (_) {} })();
+        }
+      }
+    });
+  }, [myAppointments, services, user]);
+
   // Load stylist profile to determine branch automatically for walk-ins
   useEffect(() => {
     if (!user?.uid) return;
@@ -90,40 +226,40 @@ const StylistAppointmentPage = () => {
   return (
     <div style={{ padding: 12, height: 'calc(100vh - 96px)', boxSizing: 'border-box', display: 'flex', flexDirection: 'column' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-        <h2 style={{ margin: 0 }}>Calendar</h2>
+        <h2 style={{ margin: 0, color: '#fff' }}>Calendar</h2>
         <div>
           <button onClick={() => setShowWalkinModal(true)} style={{ padding: '8px 10px', borderRadius: 6, border: '1px solid var(--border-main)', background: 'var(--gold, #f6c85f)', cursor: 'pointer' }}>New Walk-in</button>
         </div>
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12, flex: 1 }}>
-        <div style={{ width: '100%', background: 'var(--bg-drawer)', border: '1px solid var(--border-main)', borderRadius: 8, padding: 12, display: 'flex', flexDirection: 'column', height: '100%' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-            <div style={{ fontWeight: 700 }}>{currentMonth.toLocaleString(undefined, { month: 'long', year: 'numeric' })}</div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button onClick={() => { setCurrentMonth(m => addMonths(m, -1)); setSelectedDate(null); }} style={{ padding: '6px 8px', borderRadius: 6, border: '1px solid var(--border-main)', background: 'none', cursor: 'pointer' }}>{'‹'}</button>
-              <button onClick={() => { setCurrentMonth(startOfMonth(new Date())); setSelectedDate(null); }} style={{ padding: '6px 8px', borderRadius: 6, border: '1px solid var(--border-main)', background: 'none', cursor: 'pointer' }}>Today</button>
-              <button onClick={() => { setCurrentMonth(m => addMonths(m, 1)); setSelectedDate(null); }} style={{ padding: '6px 8px', borderRadius: 6, border: '1px solid var(--border-main)', background: 'none', cursor: 'pointer' }}>{'›'}</button>
+  <div style={{ width: '97%', maxWidth: 540, margin: '0 auto', background: 'var(--bg-drawer)', border: '1px solid var(--border-main)', borderRadius: 6, padding: 8, display: 'flex', flexDirection: 'column', height: '90%', color: '#fff' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+            <div style={{ fontWeight: 700, fontSize: 13 }}>{currentMonth.toLocaleString(undefined, { month: 'long', year: 'numeric' })}</div>
+            <div style={{ display: 'flex', gap: 4 }}>
+              <button onClick={() => { setCurrentMonth(m => addMonths(m, -1)); setSelectedDate(null); }} style={{ padding: '3px 5px', borderRadius: 5, border: '1px solid var(--border-main)', background: 'none', cursor: 'pointer', color: '#fff', fontSize: 11 }}>{'‹'}</button>
+              <button onClick={() => { setCurrentMonth(startOfMonth(new Date())); setSelectedDate(null); }} style={{ padding: '3px 5px', borderRadius: 5, border: '1px solid var(--border-main)', background: 'none', cursor: 'pointer', color: '#fff', fontSize: 11 }}>Today</button>
+              <button onClick={() => { setCurrentMonth(m => addMonths(m, 1)); setSelectedDate(null); }} style={{ padding: '3px 5px', borderRadius: 5, border: '1px solid var(--border-main)', background: 'none', cursor: 'pointer', color: '#fff', fontSize: 11 }}>{'›'}</button>
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 6, textAlign: 'center', marginBottom: 6 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 3, textAlign: 'center', marginBottom: 3 }}>
             {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d => (
-              <div key={d} style={{ fontSize: 12, color: 'var(--icon-main)', fontWeight: 700 }}>{d}</div>
+              <div key={d} style={{ fontSize: 10, color: '#fff', fontWeight: 700 }}>{d}</div>
             ))}
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gridTemplateRows: 'repeat(6, 1fr)', gap: 6, flex: 1, height: '100%' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gridTemplateRows: 'repeat(6, 1fr)', gap: 3, flex: 1, height: '100%' }}>
             {monthMatrix.map((week, wi) => week.map((day, di) => {
               const isCurrentMonth = day.getMonth() === currentMonth.getMonth();
               const isSelected = selectedDate && isSameDay(day, selectedDate);
               const hasAppts = myAppointments.some(a => a._start && isSameDay(a._start, day));
               return (
                 <button key={`${wi}-${di}`} onClick={() => openDate(new Date(day))} style={{
-                  padding: 8,
-                  borderRadius: 6,
-                  background: isSelected ? 'var(--text-main)' : (isCurrentMonth ? 'transparent' : 'transparent'),
-                  color: isSelected ? 'white' : (isCurrentMonth ? 'var(--text-main)' : 'var(--icon-main)'),
+                  padding: 5,
+                  borderRadius: 5,
+                  background: isSelected ? 'var(--text-main)' : 'transparent',
+                  color: isSelected ? 'white' : '#fff',
                   border: 'none',
                   cursor: 'pointer',
                   position: 'relative',
@@ -134,8 +270,8 @@ const StylistAppointmentPage = () => {
                   alignItems: 'center',
                   justifyContent: 'space-between'
                 }}>
-                  <div style={{ fontSize: 13, fontWeight: 700 }}>{day.getDate()}</div>
-                  {hasAppts && <div style={{ position: 'absolute', left: 8, bottom: 6, width: 6, height: 6, borderRadius: 6, background: 'var(--gold, #f6c85f)' }} />}
+                  <div style={{ fontSize: 11, fontWeight: 700 }}>{day.getDate()}</div>
+                  {hasAppts && <div style={{ position: 'absolute', left: 6, bottom: 5, width: 5, height: 5, borderRadius: 5, background: 'var(--gold, #f6c85f)' }} />}
                 </button>
               );
             }))}
