@@ -1,25 +1,23 @@
 import React, { useContext, useEffect, useMemo, useState } from 'react';
 import { AuthContext } from '../../context/AuthContext';
 import { db } from '../../firebase';
-import { doc, getDoc, updateDoc, serverTimestamp, addDoc, collection } from 'firebase/firestore';
+import { doc, getDoc, serverTimestamp, addDoc, collection } from 'firebase/firestore';
 import { getAuth, EmailAuthProvider, reauthenticateWithCredential, updatePassword, verifyBeforeUpdateEmail, sendPasswordResetEmail } from 'firebase/auth';
+import useMediaQuery from '../../hooks/useMediaQuery';
 
-// Convert image file -> base64 payload for inline avatar storage
-function fileToBase64(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onerror = () => reject(reader.error);
-    reader.onload = () => {
-      const dataUrl = reader.result; // data:image/...;base64,XXXX
-      const [meta, b64] = String(dataUrl).split(',');
-      const mimeMatch = /^data:(.*?);base64$/i.exec(meta || '');
-      resolve({ base64: b64 || '', mimeType: (mimeMatch && mimeMatch[1]) || (file.type || 'application/octet-stream') });
-    };
-    reader.readAsDataURL(file);
-  });
+// Build a display name from email when profile/displayName is missing
+function nameFromEmail(em) {
+  if (!em) return '';
+  const local = String(em).split('@')[0] || '';
+  return local
+    .replace(/[._-]+/g, ' ')
+    .split(' ')
+    .filter(Boolean)
+    .map(w => (w[0] ? w[0].toUpperCase() + w.slice(1) : ''))
+    .join(' ');
 }
 
-// Component: Manage stylist avatar + email & password changes using Firebase built-in flows
+// Component: Manage stylist email & password changes using Firebase built-in flows (avatar upload removed per spec)
 export default function StylistAccountPage() {
   const { user } = useContext(AuthContext);
   const auth = getAuth();
@@ -31,9 +29,17 @@ export default function StylistAccountPage() {
   const [showPasswordBox, setShowPasswordBox] = useState(false);
 
   // Display fields
-  const name = useMemo(() => (profile?.displayName || profile?.name || user?.displayName || user?.email || 'Stylist'), [profile, user]);
   const email = useMemo(() => (user?.email || profile?.email || ''), [user?.email, profile]);
-  const avatar = profile?.avatar; // { base64, mimeType }
+  const rawName = useMemo(() => (profile?.displayName || profile?.name || user?.displayName || ''), [profile, user]);
+  const name = useMemo(() => {
+    const rn = String(rawName || '').trim();
+    const em = String(email || '').trim();
+    if (!rn || rn.toLowerCase() === em.toLowerCase()) {
+      return nameFromEmail(em) || 'Stylist';
+    }
+    return rn;
+  }, [rawName, email]);
+  // Avatar upload functionality removed per request; we display initials only.
 
   // Email change state
   const [newEmail, setNewEmail] = useState('');
@@ -71,6 +77,9 @@ export default function StylistAccountPage() {
     .join('')
     .toUpperCase();
 
+  // Wide layout breakpoint (desktop)
+  const isWide = useMediaQuery('(min-width: 900px)');
+
   // Append an audit entry to users/<uid>/accountChanges
   const logAccountChange = async (action, details = {}) => {
     if (!user?.uid) return;
@@ -81,22 +90,6 @@ export default function StylistAccountPage() {
         at: serverTimestamp(),
       });
     } catch (_) {}
-  };
-
-  // Handle avatar upload and persistence in Firestore
-  const saveAvatar = async (file) => {
-    if (!file || !user?.uid) return;
-    try {
-      const { base64, mimeType } = await fileToBase64(file);
-      await updateDoc(doc(db, 'users', user.uid), {
-        avatar: { base64, mimeType },
-        updatedAt: serverTimestamp(),
-      });
-      setProfile(p => ({ ...(p || {}), avatar: { base64, mimeType } }));
-      await logAccountChange('updateAvatar', { mimeType, size: file.size || null });
-    } catch (e) {
-      setError('Failed to upload avatar');
-    }
   };
 
   // Send email verification link for pending email change
@@ -157,27 +150,28 @@ export default function StylistAccountPage() {
       <h2 style={{ marginTop: 0 }}>My Account</h2>
 
       {/* Header card */}
-      <div style={{ display: 'flex', gap: 16, alignItems: 'center', background: 'var(--bg-drawer)', border: '1px solid var(--border-main)', borderRadius: 8, padding: 12, marginBottom: 12 }}>
-        <div style={{ width: 72, height: 72, borderRadius: 999, background: 'var(--border-main)', color: 'var(--text-main)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, overflow: 'hidden' }}>
-          {avatar?.base64 ? (
-            <img src={`data:${avatar.mimeType};base64,${avatar.base64}`} alt={name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-          ) : (
-            <span>{initials || 'ST'}</span>
-          )}
+      <ResponsiveHeader
+        name={name}
+        email={email}
+        initials={initials}
+        showButtons={!isWide}
+        onToggleEmail={() => { setShowEmailBox(v => !v); setShowPasswordBox(false); }}
+        onTogglePassword={() => { setShowPasswordBox(v => !v); setShowEmailBox(false); }}
+      />
+
+      {/* Info + actions card for wide screens (Account ID removed) */}
+      {isWide && (
+        <div style={{ background: 'var(--bg-drawer)', border: '1px solid var(--border-main)', borderRadius: 8, padding: 12, marginBottom: 12 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(160px, 1fr))', gap: 12 }}>
+            <InfoRow label="Created" value={auth?.currentUser?.metadata?.creationTime || '—'} />
+            <InfoRow label="Last sign-in" value={auth?.currentUser?.metadata?.lastSignInTime || '—'} />
+          </div>
+          <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
+            <button onClick={() => { setShowEmailBox(v => !v); setShowPasswordBox(false); }} className="btn" style={{ padding: '6px 10px', fontSize: 12, borderRadius: 6, border: '1px solid var(--border-main)', background: 'var(--btn-bg,none)', cursor: 'pointer', color: 'var(--text-main)' }}>Change Email</button>
+            <button onClick={() => { setShowPasswordBox(v => !v); setShowEmailBox(false); }} className="btn" style={{ padding: '6px 10px', fontSize: 12, borderRadius: 6, border: '1px solid var(--border-main)', background: 'var(--btn-bg,none)', cursor: 'pointer', color: 'var(--text-main)' }}>Change Password</button>
+          </div>
         </div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--text-main)' }}>{name}</div>
-          <div style={{ color: 'var(--icon-main)' }}>{email}</div>
-        </div>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button onClick={() => { setShowEmailBox(v => !v); setShowPasswordBox(false); }} className="btn" style={{ padding: '8px 12px', borderRadius: 6, border: '1px solid var(--border-main)', background: 'var(--btn-bg,none)', cursor: 'pointer', color: 'var(--text-main)' }}>Change Email</button>
-          <button onClick={() => { setShowPasswordBox(v => !v); setShowEmailBox(false); }} className="btn" style={{ padding: '8px 12px', borderRadius: 6, border: '1px solid var(--border-main)', background: 'var(--btn-bg,none)', cursor: 'pointer', color: 'var(--text-main)' }}>Change Password</button>
-          <label style={{ display: 'inline-flex', alignItems: 'center' }}>
-            <input type="file" accept="image/*" onChange={async (e) => { const f = e.target.files?.[0]; if (f) await saveAvatar(f); e.target.value=''; }} style={{ display: 'none' }} />
-            <span role="button" tabIndex={0} style={{ padding: '8px 12px', borderRadius: 6, border: '1px solid var(--border-main)', background: 'var(--btn-bg,none)', cursor: 'pointer', color: 'var(--text-main)' }}>Upload Avatar</span>
-          </label>
-        </div>
-      </div>
+      )}
 
       {/* Change Email Box */}
       {showEmailBox && (
@@ -186,9 +180,9 @@ export default function StylistAccountPage() {
           <div style={{ display: 'grid', gap: 8 }}>
             <div>
               <label style={{ display: 'block', fontSize: 12, marginBottom: 4 }}>New Email</label>
-              <input value={newEmail} onChange={e => setNewEmail(e.target.value)} placeholder="name@example.com" type="email" style={{ padding: 8, borderRadius: 6, border: '1px solid var(--border-main)', width: 320, background: 'var(--bg-main)' }} />
+              <ResponsiveInput value={newEmail} onChange={e => setNewEmail(e.target.value)} placeholder="name@example.com" type="email" />
             </div>
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
               <button disabled={savingEmail} onClick={sendEmailVerificationLink} className="btn" style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid var(--border-main)', background: 'var(--text-main)', color: 'white', cursor: 'pointer' }}>{savingEmail ? 'Sending…' : 'Send verification link'}</button>
               {emailMsg && <span style={{ color: 'var(--icon-main)' }}>{emailMsg}</span>}
             </div>
@@ -204,12 +198,12 @@ export default function StylistAccountPage() {
           <div style={{ display: 'grid', gap: 8 }}>
             <div>
               <label style={{ display: 'block', fontSize: 12, marginBottom: 4 }}>Current Password</label>
-              <input value={currentPw} onChange={e => setCurrentPw(e.target.value)} placeholder="Current password" type="password" style={{ padding: 8, borderRadius: 6, border: '1px solid var(--border-main)', width: 320, background: 'var(--bg-main)' }} />
+              <ResponsiveInput value={currentPw} onChange={e => setCurrentPw(e.target.value)} placeholder="Current password" type="password" />
             </div>
             <div>
               <label style={{ display: 'block', fontSize: 12, marginBottom: 4 }}>New Password</label>
-              <input value={newPw} onChange={e => setNewPw(e.target.value)} placeholder="New password" type="password" style={{ padding: 8, borderRadius: 6, border: '1px solid var(--border-main)', width: 320, background: 'var(--bg-main)', marginBottom: 6 }} />
-              <input value={newPw2} onChange={e => setNewPw2(e.target.value)} placeholder="Re-enter password" type="password" style={{ padding: 8, borderRadius: 6, border: '1px solid var(--border-main)', width: 320, background: 'var(--bg-main)' }} />
+              <ResponsiveInput value={newPw} onChange={e => setNewPw(e.target.value)} placeholder="New password" type="password" style={{ marginBottom: 6 }} />
+              <ResponsiveInput value={newPw2} onChange={e => setNewPw2(e.target.value)} placeholder="Re-enter password" type="password" />
             </div>
             <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
               <button disabled={savingPw} onClick={reauthAndUpdatePassword} className="btn" style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid var(--border-main)', background: 'var(--text-main)', color: 'white', cursor: 'pointer' }}>{savingPw ? 'Saving…' : 'Update Password'}</button>
@@ -221,6 +215,52 @@ export default function StylistAccountPage() {
       )}
 
       {error && <div style={{ color: 'var(--danger,#d32f2f)' }}>{error}</div>}
+    </div>
+  );
+}
+
+// Responsive header section (avatar + name + actions) that stacks on narrow screens
+function ResponsiveHeader({ name, email, initials, showButtons = true, onToggleEmail, onTogglePassword }) {
+  const isNarrow = useMediaQuery('(max-width: 560px)');
+  return (
+    <div style={{ background: 'var(--bg-drawer)', border: '1px solid var(--border-main)', borderRadius: 8, padding: 12, marginBottom: 12 }}>
+      {/* Top row: avatar + name/email */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
+        <div style={{ width: 72, height: 72, borderRadius: '50%', overflow: 'hidden', background: 'var(--border-main)', flex: '0 0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-main)', fontWeight: 800, fontSize: 20 }}>
+          {initials || 'ST'}
+        </div>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-main)', lineHeight: 1.2 }}>{name}</div>
+          <div style={{ color: 'var(--icon-main)', fontSize: 11, marginTop: 4 }}>{email}</div>
+        </div>
+      </div>
+
+      {/* Buttons row below (mobile only) */}
+      {showButtons && (
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <button onClick={onToggleEmail} className="btn" style={{ padding: '6px 10px', fontSize: 12, borderRadius: 6, border: '1px solid var(--border-main)', background: 'var(--btn-bg,none)', cursor: 'pointer', color: 'var(--text-main)' }}>Change Email</button>
+          <button onClick={onTogglePassword} className="btn" style={{ padding: '6px 10px', fontSize: 12, borderRadius: 6, border: '1px solid var(--border-main)', background: 'var(--btn-bg,none)', cursor: 'pointer', color: 'var(--text-main)' }}>Change Password</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Input that uses full width on mobile, fixed comfortable width on larger screens
+function ResponsiveInput(props) {
+  const isNarrow = useMediaQuery('(max-width: 560px)');
+  const { style, ...rest } = props;
+  return (
+    <input {...rest} style={{ padding: 8, borderRadius: 6, border: '1px solid var(--border-main)', width: isNarrow ? '100%' : 320, background: 'var(--bg-main)', ...(style || {}) }} />
+  );
+}
+
+// Small labeled info item
+function InfoRow({ label, value }) {
+  return (
+    <div>
+      <div style={{ fontSize: 11, color: 'var(--icon-main)' }}>{label}</div>
+      <div style={{ fontSize: 12, color: 'var(--text-main)', marginTop: 2 }}>{value}</div>
     </div>
   );
 }

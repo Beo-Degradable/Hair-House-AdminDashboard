@@ -104,7 +104,7 @@ export default function AccountSettingsPage() {
 
   const [isNarrow, setIsNarrow] = useState(false);
   useEffect(() => {
-    const check = () => setIsNarrow(window.innerWidth < 520);
+    const check = () => setIsNarrow(window.innerWidth < 560);
     check();
     window.addEventListener('resize', check);
     return () => window.removeEventListener('resize', check);
@@ -126,7 +126,7 @@ export default function AccountSettingsPage() {
       <h1 style={{ marginBottom: 12 }}>Account Settings</h1>
 
       <div style={styles.card}>
-        <div style={styles.headerRow}>
+        <div style={{ ...styles.headerRow, flexDirection: isNarrow ? 'column' : 'row', alignItems: isNarrow ? 'flex-start' : 'center' }}>
           <div aria-hidden>
             {resolvedAvatarUrl ? (
               <img src={resolvedAvatarUrl} alt={displayName || 'Profile'} onError={(e) => { e.currentTarget.style.display = 'none'; }} style={{ width: 64, height: 64, borderRadius: '50%', objectFit: 'cover', border: '2px solid rgba(255,255,255,0.04)' }} />
@@ -140,10 +140,10 @@ export default function AccountSettingsPage() {
           </div>
         </div>
 
-        <div style={styles.buttons}>
-          <button style={{ ...styles.btn, ...styles.btnSecondary }} onClick={() => setChangeMode('password')}>Change password</button>
+        <div style={{ ...styles.buttons, flexWrap: 'wrap' }}>
+          <button style={{ ...styles.btn, ...styles.btnSecondary, width: isNarrow ? '100%' : 'auto' }} onClick={() => setChangeMode('password')}>Change password</button>
           <button
-            style={{ ...styles.btn, ...styles.btnDanger }}
+            style={{ ...styles.btn, ...styles.btnDanger, width: isNarrow ? '100%' : 'auto' }}
             onClick={async () => {
               try {
                 await auth.signOut();
@@ -172,20 +172,37 @@ export default function AccountSettingsPage() {
             </div>
           </>
         ) : (
-          <div>
-            <div style={{ fontWeight: 700, marginBottom: 8, color: '#ffd54f' }}>Change password</div>
+          <>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontWeight: 800, fontSize: 16, lineHeight: 1.2 }}>{displayName}</div>
+              <div style={{ color: '#ddd', marginTop: 4, fontSize: 12 }}>{shortenEmail(email)}</div>
+            </div>
             <div style={{ display: 'grid', gap: 8, maxWidth: 520 }}>
               <label style={{ color: '#ddd' }}>Current password</label>
-              <input type="password" value={currentPw} onChange={(e) => setCurrentPw(e.target.value)} />
-
+              <input
+                type="password"
+                value={currentPw}
+                onChange={(e) => setCurrentPw(e.target.value)}
+                style={{ width: isNarrow ? '100%' : 320, padding: 8, borderRadius: 6, border: '1px solid #333', background: '#121212', color: '#eee' }}
+              />
               <label style={{ color: '#ddd' }}>New password</label>
-              <input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
-              <label style={{ color: '#ddd' }}>Re-enter new password</label>
-              <input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
+              <input
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                style={{ width: isNarrow ? '100%' : 320, padding: 8, borderRadius: 6, border: '1px solid #333', background: '#121212', color: '#eee' }}
+              />
+              <label style={{ color: '#ddd' }}>Confirm password</label>
+              <input
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                style={{ width: isNarrow ? '100%' : 320, padding: 8, borderRadius: 6, border: '1px solid #333', background: '#121212', color: '#eee' }}
+              />
 
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
                 <button
-                  style={{ ...styles.btn, ...styles.btnSecondary }}
+                  style={{ ...styles.btn, ...styles.btnSecondary, width: isNarrow ? '100%' : 'auto' }}
                   disabled={loading}
                   onClick={async () => {
                     setStatus('');
@@ -208,7 +225,7 @@ export default function AccountSettingsPage() {
                   {loading ? 'Saving…' : 'Update password'}
                 </button>
                 <button
-                  style={{ ...styles.btn, ...styles.btnSecondary }}
+                  style={{ ...styles.btn, ...styles.btnSecondary, width: isNarrow ? '100%' : 'auto' }}
                   onClick={async () => {
                     setStatus('');
                     try { await sendPasswordResetEmail(auth, email); setStatus('Reset email sent'); } catch (e) { setStatus(e?.message || 'Failed to send reset email'); }
@@ -216,11 +233,11 @@ export default function AccountSettingsPage() {
                 >
                   Forgot password? Email reset link
                 </button>
-                <button style={{ ...styles.btn }} onClick={() => setChangeMode(null)}>Cancel</button>
+                <button style={{ ...styles.btn, width: isNarrow ? '100%' : 'auto' }} onClick={() => setChangeMode(null)}>Cancel</button>
               </div>
               {status && <div style={{ marginTop: 8, color: '#ffd54f' }}>{status}</div>}
             </div>
-          </div>
+          </>
         )}
       </div>
     </div>
