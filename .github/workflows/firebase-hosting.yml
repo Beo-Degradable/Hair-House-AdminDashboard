@@ -1,0 +1,72 @@
+name: Deploy Firebase Hosting
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Use Node.js 20.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Build React app
+        run: npm run build
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: build
+          path: build
+
+      # Option A: Use a Firebase service account JSON (recommended for granular perms)
+      # Store service account JSON in GitHub secret FIREBASE_SERVICE_ACCOUNT (the entire JSON string).
+      - name: Set up Firebase credentials (service account)
+        if: ${{ secrets.FIREBASE_SERVICE_ACCOUNT != '' }}
+        run: |
+          echo "${FIREBASE_SERVICE_ACCOUNT}" > ${HOME}/firebase-service-account.json
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+
+      - name: Install Firebase CLI
+        run: npm install -g firebase-tools
+
+      # Option B: Use a refresh token (legacy). If using FIREBASE_TOKEN secret instead, remove service account step above.
+      # firebase login:ci output goes into FIREBASE_TOKEN secret.
+
+      - name: Deploy to Firebase Hosting (live channel)
+        run: |
+          if [ -f "${HOME}/firebase-service-account.json" ]; then
+            firebase deploy --only hosting --project hair-house-salon-ef695 --token "$(cat ${HOME}/firebase-service-account.json | jq -r '.private_key_id' || echo '')" || true
+          fi
+          # Prefer service account via GOOGLE_APPLICATION_CREDENTIALS for firebase deploy using auth:import or emulators if needed
+          if [ -n "${FIREBASE_TOKEN}" ]; then
+            firebase deploy --only hosting --project hair-house-salon-ef695
+          fi
+        env:
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.home }}/firebase-service-account.json
+
+      - name: Finish
+        run: echo "Deployment workflow completed."
+
+# Instructions:
+# 1. Create a Firebase service account (Viewer + Firebase Hosting Admin) in GCP IAM and download JSON.
+# 2. Add the JSON content as a GitHub secret named FIREBASE_SERVICE_ACCOUNT (paste full JSON). OR run `firebase login:ci` locally and add output as FIREBASE_TOKEN.
+# 3. Push to main. Workflow builds and deploys automatically ensuring permanence.
+# 4. Remove the unused credentials option (token or service account) once one method is chosen.
