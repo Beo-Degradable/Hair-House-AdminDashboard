@@ -13,6 +13,7 @@ const navButtons = [
   { label: "Appointments", path: "/appointments" },
   { label: "Products", path: "/products" },
   { label: "Services", path: "/services" },
+  { label: "Promotions", path: "/promotions" },
   { label: "Inventory", path: "/inventory" },
   { label: "Users", path: "/users" },
 ];
