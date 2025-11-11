@@ -1,7 +1,7 @@
 // Admin account settings: resolve display name from user doc/email, provide password change (reauth + update) and sign out.
 import React, { useEffect, useState, useContext } from 'react';
 import { auth, db } from '../../firebase';
-import { onAuthStateChanged, EmailAuthProvider, reauthenticateWithCredential, updatePassword, sendPasswordResetEmail } from 'firebase/auth';
+import { onAuthStateChanged, EmailAuthProvider, reauthenticateWithCredential, updatePassword, sendPasswordResetEmail, GoogleAuthProvider, linkWithPopup, updateProfile } from 'firebase/auth';
 import { doc, onSnapshot, collection, query, where, limit } from 'firebase/firestore';
 import { AuthContext } from '../../context/AuthContext';
 
@@ -29,6 +29,7 @@ export default function AccountSettingsPage() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [status, setStatus] = useState('');
   const [loading, setLoading] = useState(false);
+  const [linking, setLinking] = useState(false);
 
   const nameFromEmail = (em) => {
     if (!em) return '';
@@ -100,7 +101,12 @@ export default function AccountSettingsPage() {
   ];
 
   const avatarInitial = (displayName && displayName[0]) || 'A';
-  const resolvedAvatarUrl = auth?.currentUser?.photoURL || null;
+  // Prefer Google/provider photo, then auth photoURL
+  const providerPhoto = auth?.currentUser?.providerData?.[0]?.photoURL || null;
+  const resolvedAvatarUrl = auth?.currentUser?.photoURL || providerPhoto || null;
+  const [avatarBroken, setAvatarBroken] = useState(false);
+  useEffect(() => { setAvatarBroken(false); }, [resolvedAvatarUrl]);
+  const hasGoogleProvider = !!(auth?.currentUser?.providerData || []).some(p => p?.providerId === 'google.com');
 
   const [isNarrow, setIsNarrow] = useState(false);
   useEffect(() => {
@@ -128,8 +134,13 @@ export default function AccountSettingsPage() {
       <div style={styles.card}>
         <div style={{ ...styles.headerRow, flexDirection: isNarrow ? 'column' : 'row', alignItems: isNarrow ? 'flex-start' : 'center' }}>
           <div aria-hidden>
-            {resolvedAvatarUrl ? (
-              <img src={resolvedAvatarUrl} alt={displayName || 'Profile'} onError={(e) => { e.currentTarget.style.display = 'none'; }} style={{ width: 64, height: 64, borderRadius: '50%', objectFit: 'cover', border: '2px solid rgba(255,255,255,0.04)' }} />
+            {!avatarBroken && resolvedAvatarUrl ? (
+              <img
+                src={resolvedAvatarUrl}
+                alt={displayName || 'Profile'}
+                onError={() => setAvatarBroken(true)}
+                style={{ width: 64, height: 64, borderRadius: '50%', objectFit: 'cover', border: '2px solid rgba(255,255,255,0.04)' }}
+              />
             ) : (
               <div style={styles.avatar} aria-hidden>{avatarInitial}</div>
             )}
@@ -141,6 +152,34 @@ export default function AccountSettingsPage() {
         </div>
 
         <div style={{ ...styles.buttons, flexWrap: 'wrap' }}>
+          {!hasGoogleProvider && (
+            <button
+              style={{ ...styles.btn, ...styles.btnSecondary, width: isNarrow ? '100%' : 'auto' }}
+              disabled={linking}
+              onClick={async () => {
+                setStatus('');
+                setLinking(true);
+                try {
+                  const provider = new GoogleAuthProvider();
+                  const result = await linkWithPopup(auth.currentUser, provider);
+                  const newPhoto = result.user?.photoURL || result.user?.providerData?.[0]?.photoURL || null;
+                  if (newPhoto) {
+                    try { await updateProfile(auth.currentUser, { photoURL: newPhoto }); } catch {}
+                    setStatus('Google linked. Photo updated.');
+                  } else {
+                    setStatus('Google linked. No photo found on provider.');
+                  }
+                } catch (e) {
+                  console.error('Google link failed', e);
+                  setStatus(e?.message || 'Failed to link Google account');
+                } finally {
+                  setLinking(false);
+                }
+              }}
+            >
+              {linking ? 'Linking…' : 'Use Google photo'}
+            </button>
+          )}
           <button style={{ ...styles.btn, ...styles.btnSecondary, width: isNarrow ? '100%' : 'auto' }} onClick={() => setChangeMode('password')}>Change password</button>
           <button
             style={{ ...styles.btn, ...styles.btnDanger, width: isNarrow ? '100%' : 'auto' }}

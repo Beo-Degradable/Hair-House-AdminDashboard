@@ -36,9 +36,9 @@ const TopBar = ({ onLogout, darkMode, setDarkMode, settingsOpen, setSettingsOpen
   const { user } = useContext(AuthContext);
 
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [showProfileMenu, setShowProfileMenu] = useState(false);
-  const profileBtnRef = useRef(null);
-  const profileMenuRef = useRef(null);
+  const [showProfileMenu, setShowProfileMenu] = useState(false); // deprecated; dropdown removed
+  const profileBtnRef = useRef(null); // deprecated
+  const profileMenuRef = useRef(null); // deprecated
   const [showNav, setShowNav] = useState(false);
   const [showMore, setShowMore] = useState(false);
   const moreBtnRef = useRef(null);
@@ -300,11 +300,23 @@ useEffect(() => {
     } catch (e) {}
   }, [avatarUrl, user]);
 
+  // If the resolved avatar URL changes, clear the "broken" flag so we attempt to load it again.
+  useEffect(() => {
+    setAvatarBroken(false);
+  }, [avatarUrl]);
+
   // Track broken avatar to show initials
   const [avatarBroken, setAvatarBroken] = useState(false);
 
   const getInitials = (name) => {
-    if (!name) return '';
+    // Prefer initials from name; fallback to email local-part; default 'U'
+    if (!name || !name.trim()) {
+      if (fullEmail) {
+        const local = (fullEmail.split('@')[0] || '').trim();
+        return (local.slice(0, 2) || 'U').toUpperCase();
+      }
+      return 'U';
+    }
     const parts = name.trim().split(/\s+/);
     if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
     return (parts[0][0] + (parts[parts.length - 1][0] || '')).toUpperCase();
@@ -553,42 +565,10 @@ useEffect(() => {
                     >
                       {btn.label}
                     </button>
-                    {/* Notifications bell, profile avatar, and user display */}
+                    {/* Notifications bell should come first, then initials-only profile, then optional name */}
                     {btn.label === 'Users' && (
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 6 }}>
-                        {/* Profile / Avatar button */}
-                        {avatarUrl ? (
-                          <button
-                            ref={profileBtnRef}
-                            onClick={(e) => {
-                              if (e.altKey || e.ctrlKey) {
-                                showAvatarDebug();
-                                return;
-                              }
-                              setShowProfileMenu(v => !v);
-                            }}
-                            aria-haspopup="true"
-                            aria-expanded={showProfileMenu}
-                            style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
-                            title={fullEmail || fullName || 'Profile'}
-                            aria-label={fullEmail || fullName || 'Profile'}
-                          >
-                            {!avatarBroken && avatarUrl ? (
-                              <img src={avatarUrl} alt={fullName || 'Profile'} onError={(ev) => handleAvatarError(avatarUrl, ev)} style={{ width: 26, height: 26, borderRadius: 999, objectFit: 'cover', border: '1px solid var(--border-main)' }} />
-                            ) : (
-                              <div title={fullName || 'Profile'} aria-label={fullName || 'Profile'} style={{ width: 26, height: 26, borderRadius: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--border-main)', color: 'var(--text-main)', fontSize: 12, fontWeight: 700 }}>{getInitials(fullName)}</div>
-                            )}
-                          </button>
-                        ) : (
-                          <button ref={profileBtnRef} onClick={(e) => { if (e.altKey || e.ctrlKey) { showAvatarDebug(); return; } setShowProfileMenu(v => !v); }} aria-haspopup="true" aria-expanded={showProfileMenu} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer' }} title="Profile" aria-label="Profile">
-                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden>
-                              <circle cx="12" cy="8" r="3" stroke="var(--icon-main)" strokeWidth="1.2" fill="none" />
-                              <path d="M4 20c0-3.3 4-5 8-5s8 1.7 8 5" stroke="var(--icon-main)" strokeWidth="1.2" fill="none" />
-                            </svg>
-                          </button>
-                        )}
-
-                        {/* Notification bell (sibling to profile) */}
+                        {/* Notification bell */}
                         <button onClick={() => { navigate('/notifications'); setDrawerOpen(false); }} title="Notifications" style={{ background: 'none', border: 'none', cursor: 'pointer', position: 'relative', padding: 6 }}>
                           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden>
                             <path d="M15 17h5l-1.405-1.405A2.032 2.032 0 0 1 18 14.158V11a6 6 0 0 0-5-5.917V4a1 1 0 1 0-2 0v1.083A6 6 0 0 0 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5" stroke="var(--icon-main)" strokeWidth="1.4" fill="none" />
@@ -598,16 +578,36 @@ useEffect(() => {
                           )}
                         </button>
 
-                        { (isWindows || isWide) && (
-                          <div style={{ marginLeft: 6, fontSize: 13, color: 'var(--text-main)', maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={fullName}>{shortenName(fullName, 18)}</div>
-                        )}
+                        {/* Profile frame: show provider photo if available, fallback to initials */}
+                        <button
+                          ref={profileBtnRef}
+                          onClick={(e) => { if (e.altKey || e.ctrlKey) { showAvatarDebug(); return; } navigate('/account-settings'); }}
+                          style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
+                          title={fullEmail || fullName || 'Account Settings'}
+                          aria-label={fullEmail || fullName || 'Account Settings'}
+                        >
+                          {(!avatarBroken && avatarUrl) ? (
+                            <img
+                              src={avatarUrl}
+                              alt={fullName || 'Profile'}
+                              onError={(ev) => handleAvatarError(avatarUrl, ev)}
+                              style={{ width: 26, height: 26, borderRadius: 999, objectFit: 'cover', border: '1px solid var(--border-main)' }}
+                            />
+                          ) : (
+                            <div
+                              title={fullName || 'Profile'}
+                              aria-label={fullName || 'Profile'}
+                              style={{ width: 26, height: 26, borderRadius: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--border-main)', color: 'var(--text-main)', fontSize: 12, fontWeight: 700 }}
+                            >
+                              {getInitials(fullName)}
+                            </div>
+                          )}
+                        </button>
 
-                        {showProfileMenu && (
-                          <div ref={profileMenuRef} role="menu" style={{ position: 'absolute', right: 20, top: 56, background: 'var(--bg-drawer)', border: '1px solid var(--border-main)', borderRadius: 8, padding: 8, boxShadow: '0 6px 20px rgba(0,0,0,.4)', zIndex: 1700 }}>
-                            <button role="menuitem" onClick={() => { navigate('/profile'); setShowProfileMenu(false); }} style={{ background: 'none', border: 'none', color: 'var(--icon-main)', padding: '8px 12px', width: '100%', textAlign: 'left' }}>Profile</button>
-                            <button role="menuitem" onClick={() => { navigate('/account-settings'); setShowProfileMenu(false); }} style={{ background: 'none', border: 'none', color: 'var(--icon-main)', padding: '8px 12px', width: '100%', textAlign: 'left' }}>Settings</button>
-                            <button role="menuitem" onClick={() => { setShowProfileMenu(false); if (onLogout) onLogout(); }} style={{ background: 'none', border: 'none', color: 'var(--icon-main)', padding: '8px 12px', width: '100%', textAlign: 'left' }}>Logout</button>
-                          </div>
+                        { (isWindows || isWide) && (
+                          <button onClick={() => navigate('/account-settings')} style={{ background: 'none', border: 'none', marginLeft: 6, fontSize: 13, color: 'var(--text-main)', maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', cursor: 'pointer', padding: 0 }} title="Account Settings">
+                            {shortenName(fullName, 18)}
+                          </button>
                         )}
                       </div>
                     )}

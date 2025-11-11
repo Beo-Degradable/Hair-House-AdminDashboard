@@ -91,6 +91,10 @@ exports.sendPasswordSetupLinkOnUserCreate = functions.firestore
   .onCreate(async (snap, context) => {
     const data = snap.data() || {};
     const email = (data.email || '').toString().trim();
+    // Allow client/creator to opt-out by setting skipPasswordSetupEmail=true on the document
+    if (data.skipPasswordSetupEmail === true) {
+      return null;
+    }
     if (!email) {
       console.warn('sendPasswordSetupLinkOnUserCreate: no email on users doc', { uid: context.params.uid });
       return null;
@@ -130,3 +134,51 @@ exports.sendPasswordSetupLinkOnUserCreate = functions.firestore
       return null;
     }
   });
+
+// Callable function: createAuthUser
+// Creates a Firebase Authentication user (email/password) and returns the uid.
+// Expects data: { email: string, password: string, name?: string, role?: string, branchName?: string }
+// Requires an authenticated caller (admin). You can extend with custom claims checks.
+exports.createAuthUser = functions.https.onCall(async (data, context) => {
+  if (!context.auth || !context.auth.uid) {
+    throw new functions.https.HttpsError('unauthenticated', 'Authentication required');
+  }
+
+  const email = (data && data.email ? String(data.email).trim() : '');
+  const password = (data && data.password ? String(data.password) : '');
+  if (!email || !password) {
+    throw new functions.https.HttpsError('invalid-argument', 'email and password are required');
+  }
+
+  try {
+    // Create auth user
+    const userRecord = await admin.auth().createUser({
+      email,
+      password,
+      displayName: data.name ? String(data.name).trim() : undefined,
+      disabled: false
+    });
+
+    // Optionally set custom claims based on role
+    const role = data && data.role ? String(data.role) : '';
+    if (role === 'admin' || role === 'stylist') {
+      try {
+        await admin.auth().setCustomUserClaims(userRecord.uid, { role });
+      } catch (e) {
+        console.warn('Failed setting custom claims', e);
+      }
+    }
+
+    return { uid: userRecord.uid };
+  } catch (err) {
+    console.error('createAuthUser error', err);
+    // Map common Firebase Auth errors
+    if (err.code === 'auth/email-already-exists') {
+      throw new functions.https.HttpsError('already-exists', 'Email already exists');
+    }
+    if (err.code === 'auth/invalid-password') {
+      throw new functions.https.HttpsError('invalid-argument', 'Password is invalid');
+    }
+    throw new functions.https.HttpsError('internal', 'Failed to create auth user');
+  }
+});

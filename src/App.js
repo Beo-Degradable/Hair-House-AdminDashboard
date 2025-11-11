@@ -14,7 +14,6 @@ import StylistHelpPage from "./pages/StylistSide/StylistHelpPage";
 import StylistAboutPage from "./pages/StylistSide/StylistAboutPage";
 import StylistHome from "./pages/StylistSide/StylistHome";
 import TodayList from "./pages/StylistSide/TodayList";
-import ProfilePage from "./pages/AdminSide/ProfilePage";
 import AccountSettingsPage from "./pages/AdminSide/AccountSettingsPage";
 import NotificationsPage from "./pages/AdminSide/NotificationsPage";
 import HelpPage from "./pages/AdminSide/HelpPage";
@@ -22,7 +21,7 @@ import AboutPage from "./pages/AdminSide/AboutPage";
 import AdminAppointmentPage from "./pages/AdminSide/AppointmentPage/AppointmentPage";
 import ProductPage from "./pages/AdminSide/ProductPage/ProductPage";
 import ServicePage from "./pages/AdminSide/ServicePage/ServicePage";
-import PromotionPage from "./pages/AdminSide/PromotionPage/PromotionPage";
+import PromotionsPage from "./pages/AdminSide/PromotionsPage/PromotionsPage";
 import InventoryPage from "./pages/AdminSide/InventoryPage/InventoryPage";
 import UsersPage from "./pages/AdminSide/UsersPage/UsersPage";
 import { AuthContext } from "./context/AuthContext";
@@ -53,13 +52,13 @@ function App() {
       {role === "admin" && (
         <Routes>
           <Route path="/" element={<AdminDashboard onLogout={() => setRole("")} />}/>
-          <Route path="/profile" element={<AdminDashboard onLogout={() => setRole("")} page={<ProfilePage />} />} />
+          <Route path="/profile" element={<Navigate to="/account-settings" replace />} />
           <Route path="/account-settings" element={<AdminDashboard onLogout={() => setRole("")} page={<AccountSettingsPage />} />} />
           <Route path="/notifications" element={<AdminDashboard onLogout={() => setRole("")} page={<NotificationsPage />} />} />
           <Route path="/appointments" element={<AdminDashboard onLogout={() => setRole("") } page={<AdminAppointmentPage />} />} />
           <Route path="/products" element={<AdminDashboard onLogout={() => setRole("")} page={<ProductPage />} />} />
           <Route path="/services" element={<AdminDashboard onLogout={() => setRole("")} page={<ServicePage />} />} />
-          <Route path="/promotions" element={<AdminDashboard onLogout={() => setRole("")} page={<PromotionPage />} />} />
+          <Route path="/promotions" element={<AdminDashboard onLogout={() => setRole("")} page={<PromotionsPage />} />} />
           <Route path="/inventory" element={<AdminDashboard onLogout={() => setRole("")} page={<InventoryPage />} />} />
           <Route path="/users" element={<AdminDashboard onLogout={() => setRole("")} page={<UsersPage />} />} />
           <Route path="/help" element={<AdminDashboard onLogout={() => setRole("")} page={<HelpPage />} />} />
