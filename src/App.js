@@ -24,6 +24,7 @@ import ServicePage from "./pages/AdminSide/ServicePage/ServicePage";
 import PromotionsPage from "./pages/AdminSide/PromotionsPage/PromotionsPage";
 import InventoryPage from "./pages/AdminSide/InventoryPage/InventoryPage";
 import UsersPage from "./pages/AdminSide/UsersPage/UsersPage";
+import PaymentProfilesPage from "./pages/AdminSide/PaymentProfilesPage";
 import { AuthContext } from "./context/AuthContext";
 
 function App() {
@@ -61,6 +62,7 @@ function App() {
           <Route path="/promotions" element={<AdminDashboard onLogout={() => setRole("")} page={<PromotionsPage />} />} />
           <Route path="/inventory" element={<AdminDashboard onLogout={() => setRole("")} page={<InventoryPage />} />} />
           <Route path="/users" element={<AdminDashboard onLogout={() => setRole("")} page={<UsersPage />} />} />
+            <Route path="/profiles" element={<AdminDashboard onLogout={() => setRole("")} page={<PaymentProfilesPage />} />} />
           <Route path="/help" element={<AdminDashboard onLogout={() => setRole("")} page={<HelpPage />} />} />
           <Route path="/about" element={<AdminDashboard onLogout={() => setRole("")} page={<AboutPage />} />} />
           <Route path="*" element={<Navigate to="/" replace />} />

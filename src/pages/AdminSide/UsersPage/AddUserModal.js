@@ -2,7 +2,9 @@
 import React, { useState, useEffect } from 'react';
 import { setDoc, doc, serverTimestamp, collection, onSnapshot } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
-import { db, functions } from '../../../firebase';
+import { db, functions, firebaseConfig } from '../../../firebase';
+import { initializeApp as initializeAppClient, deleteApp as deleteAppClient } from 'firebase/app';
+import { getAuth as getAuthClient, createUserWithEmailAndPassword, signOut as signOutClient } from 'firebase/auth';
 import { isValidName, isValidEmail, isValidPassword, sanitizeName, stripSpecialExceptEmail } from '../../../utils/validators';
 import { logHistory } from '../../../utils/historyLogger';
 
@@ -27,6 +29,11 @@ const AddUserModal = ({ open, onClose }) => {
     }, err => { console.warn('services listener', err); setServices([]); });
     return () => unsub();
   }, []);
+
+  // Clear branch when role is not stylist to avoid accidental submission
+  useEffect(() => {
+    if (role !== 'stylist') setBranchName('');
+  }, [role]);
 
   if (!open) return null;
 
@@ -57,35 +64,78 @@ const AddUserModal = ({ open, onClose }) => {
     setSaving(true);
     try {
       const createAuthUser = httpsCallable(functions, 'createAuthUser');
-      // First create Auth user to get uid
-      let authResult;
+      // First create Auth user to get uid. Try server callable, fallback to client-side secondary app creation.
+      let uid = null;
       try {
-        authResult = await createAuthUser({ email: email.trim(), password, name: sanitizeName(name), role, branchName });
+        const authResult = await createAuthUser({ email: email.trim(), password, name: sanitizeName(name), role, branchName });
+        uid = authResult && authResult.data && authResult.data.uid;
       } catch (authErr) {
-        console.error('Auth user creation failed', authErr);
-        const msg = (authErr && authErr.message) ? authErr.message : 'Failed creating auth user';
-        alert(msg);
-        setSaving(false);
-        return;
+        // Callable may not be deployed (Artifact Registry / Blaze issue) or be restricted; fall back to client-side secondary app.
+        console.warn('createAuthUser callable failed, falling back to client-side creation', authErr);
+        try {
+          const secondaryApp = initializeAppClient(firebaseConfig, 'secondary-' + Date.now());
+          const secondaryAuth = getAuthClient(secondaryApp);
+          const userCred = await createUserWithEmailAndPassword(secondaryAuth, email.trim(), password);
+          uid = userCred.user && userCred.user.uid;
+          // clean up secondary auth state
+          try { await signOutClient(secondaryAuth); } catch (e) { /* ignore */ }
+          try { await deleteAppClient(secondaryApp); } catch (e) { /* ignore */ }
+        } catch (fbErr) {
+          console.error('Fallback client-side auth creation failed', fbErr);
+          // Handle common auth errors explicitly
+          const code = fbErr && (fbErr.code || fbErr.code) ? fbErr.code : null;
+          if (code === 'auth/email-already-in-use') {
+            // The Authentication user already exists (created earlier via console or another flow).
+            // We cannot obtain that user's UID from the client-side for security reasons.
+            // Prompt the operator with clear next steps.
+            alert(`This email is already registered in Authentication. To finish creating the user profile in Firestore, either:
+
+- Use the Firebase Console to find the user and create a users/{uid} document manually, or
+- Run an admin script (use a service account) to look up the UID by email and create the Firestore document.
+
+If you want, I can add a small admin script to the repo that will create the users/{uid} doc for an existing auth user.`);
+          } else {
+            const msg = (fbErr && fbErr.message) ? fbErr.message : 'Failed creating auth user';
+            alert(msg);
+          }
+          setSaving(false);
+          return;
+        }
       }
-      const uid = authResult && authResult.data && authResult.data.uid;
       if (!uid) {
         alert('Failed to obtain new user uid');
         setSaving(false);
         return;
       }
+      // Build payload without undefined values (Firestore rejects undefined)
       const payload = {
         name: sanitizeName(name),
         email: email.trim(),
         role,
-        branchName: role === 'stylist' ? branchName : undefined,
-        yearsOfExperience: role === 'stylist' ? Number(yearsOfExperience) : undefined,
-        specializedServices: role === 'stylist' ? specializedServices.map(s => ({ id: s.id, name: s.name })) : undefined,
         createdAt: serverTimestamp(),
         authUid: uid,
         skipPasswordSetupEmail: true
       };
-      await setDoc(doc(db, 'users', uid), payload);
+      if (role === 'stylist') {
+        payload.branchName = branchName;
+        payload.yearsOfExperience = Number(yearsOfExperience);
+        payload.specializedServices = specializedServices.map(s => ({ id: s.id, name: s.name }));
+      }
+      try {
+        await setDoc(doc(db, 'users', uid), payload);
+      } catch (setErr) {
+        console.error('Failed to write users doc', setErr);
+        const msg = (setErr && (setErr.code || setErr.message)) ? (setErr.code || setErr.message) : JSON.stringify(setErr);
+        alert('Failed to write users document: ' + msg);
+        // Attempt to clean up created auth user if we created it client-side (best-effort)
+        try {
+          // If callable created the auth user, deletion should be handled server-side; otherwise attempt to remove via client secondary app is complex.
+        } catch (cleanupErr) {
+          console.warn('Failed cleanup after setDoc failure', cleanupErr);
+        }
+        setSaving(false);
+        return;
+      }
       try {
         await logHistory({ action: 'create', collection: 'users', docId: uid, before: null, after: payload });
       } catch (hx) { console.warn('Failed to write history for user create', hx); }
@@ -122,16 +172,19 @@ const AddUserModal = ({ open, onClose }) => {
                 <option value="admin">Admin</option>
               </select>
             </div>
-            <div>
-              <label style={{ display: 'block', fontSize: 12 }}>Branch</label>
-              <select value={branchName} onChange={e => setBranchName(e.target.value)} style={{ width: '80%', padding: 8, background: 'var(--surface)', border: '1px solid var(--border-main)', color: 'var(--text-primary)' }}>
-                <option value="">Select branch</option>
-                <option value="Vergara">Vergara</option>
-                <option value="Lawas">Lawas</option>
-                <option value="Lipa">Lipa</option>
-                <option value="Tanauan">Tanauan</option>
-              </select>
-            </div>
+
+            {role === 'stylist' ? (
+              <div>
+                <label style={{ display: 'block', fontSize: 12 }}>Branch</label>
+                <select value={branchName} onChange={e => setBranchName(e.target.value)} style={{ width: '80%', padding: 8, background: 'var(--surface)', border: '1px solid var(--border-main)', color: 'var(--text-primary)' }}>
+                  <option value="">Select branch</option>
+                  <option value="Vergara">Vergara</option>
+                  <option value="Lawas">Lawas</option>
+                  <option value="Lipa">Lipa</option>
+                  <option value="Tanauan">Tanauan</option>
+                </select>
+              </div>
+            ) : null}
 
             <div>
               <label style={{ display: 'block', fontSize: 12 }}>Password</label>

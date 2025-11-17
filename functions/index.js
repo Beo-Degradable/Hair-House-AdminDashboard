@@ -182,3 +182,76 @@ exports.createAuthUser = functions.https.onCall(async (data, context) => {
     throw new functions.https.HttpsError('internal', 'Failed to create auth user');
   }
 });
+
+// Callable function: deleteAuthUser
+// Deletes a Firebase Auth user and removes their users/{uid} Firestore document.
+// Requires an authenticated caller (you can restrict further by checking custom claims).
+exports.deleteAuthUser = functions.https.onCall(async (data, context) => {
+  if (!context.auth || !context.auth.uid) {
+    throw new functions.https.HttpsError('unauthenticated', 'Authentication required to call this function');
+  }
+
+  const uid = (data && data.uid) ? String(data.uid).trim() : '';
+  if (!uid) {
+    throw new functions.https.HttpsError('invalid-argument', 'uid is required');
+  }
+
+  try {
+    // Delete auth user
+    await admin.auth().deleteUser(uid);
+  } catch (err) {
+    console.error('deleteAuthUser: failed to delete auth user', err, { uid });
+    // If the user was not found, continue to attempt deleting the Firestore doc
+    if (err.code && err.code === 'auth/user-not-found') {
+      console.warn('deleteAuthUser: auth user not found, continuing to delete Firestore doc');
+    } else {
+      throw new functions.https.HttpsError('internal', 'Failed to delete auth user');
+    }
+  }
+
+  try {
+    // Delete Firestore users document (if present)
+    await admin.firestore().doc(`users/${uid}`).delete();
+  } catch (err) {
+    console.error('deleteAuthUser: failed to delete users doc', err, { uid });
+    // Firestore delete may fail if doc doesn't exist or permissions; report as internal error
+    throw new functions.https.HttpsError('internal', 'Failed to delete users document');
+  }
+
+  return { success: true };
+});
+
+// Callable function: updateAuthUser
+// Supports actions: disable, enable, revokeTokens
+exports.updateAuthUser = functions.https.onCall(async (data, context) => {
+  if (!context.auth || !context.auth.uid) {
+    throw new functions.https.HttpsError('unauthenticated', 'Authentication required to call this function');
+  }
+
+  const uid = (data && data.uid) ? String(data.uid).trim() : '';
+  const action = (data && data.action) ? String(data.action) : '';
+  if (!uid || !action) {
+    throw new functions.https.HttpsError('invalid-argument', 'uid and action are required');
+  }
+
+  try {
+    if (action === 'disable') {
+      await admin.auth().updateUser(uid, { disabled: true });
+      await admin.auth().revokeRefreshTokens(uid);
+      return { success: true, action: 'disabled' };
+    }
+    if (action === 'enable') {
+      await admin.auth().updateUser(uid, { disabled: false });
+      return { success: true, action: 'enabled' };
+    }
+    if (action === 'revoke') {
+      await admin.auth().revokeRefreshTokens(uid);
+      return { success: true, action: 'revoked' };
+    }
+
+    throw new functions.https.HttpsError('invalid-argument', 'Unknown action');
+  } catch (err) {
+    console.error('updateAuthUser error', err, { uid, action });
+    throw new functions.https.HttpsError('internal', 'Failed to update auth user');
+  }
+});

@@ -6,7 +6,7 @@ import React, { useState, useEffect, useRef, useContext } from "react";
 import { AuthContext } from "../../context/AuthContext";
 import { auth, db } from "../../firebase";
 import { useNavigate, useLocation } from "react-router-dom";
-import { collection, query as q, orderBy, limit, onSnapshot } from 'firebase/firestore';
+import { collection, query as q, orderBy, limit, onSnapshot, doc as docRef, getDoc } from 'firebase/firestore';
 
 const navButtons = [
   { label: "Home", path: "/" },
@@ -15,6 +15,7 @@ const navButtons = [
   { label: "Services", path: "/services" },
   { label: "Promotions", path: "/promotions" },
   { label: "Inventory", path: "/inventory" },
+  { label: "Profiles", path: "/profiles" },
   { label: "Users", path: "/users" },
 ];
 
@@ -43,6 +44,7 @@ const TopBar = ({ onLogout, darkMode, setDarkMode, settingsOpen, setSettingsOpen
   const [showMore, setShowMore] = useState(false);
   const moreBtnRef = useRef(null);
   const moreMenuRef = useRef(null);
+  const [paymentProfile, setPaymentProfile] = useState(null);
 
   // Responsive nav breakpoint detection
 const [isWide, setIsWide] = useState(() => {
@@ -367,6 +369,34 @@ useEffect(() => {
     return () => window.removeEventListener('mousedown', onDown);
   }, [showMore]);
 
+  
+
+  
+
+  useEffect(() => {
+    let mounted = true;
+    async function loadProfile() {
+      try {
+        const uid = auth?.currentUser?.uid || user?.uid || user?.authUid;
+        if (!uid) return;
+        const ref = docRef(db, 'users', uid);
+        const snap = await getDoc(ref);
+        if (!mounted) return;
+        if (snap.exists()) {
+          const data = snap.data();
+          setPaymentProfile(data.paymentProfile || null);
+        } else {
+          setPaymentProfile(null);
+        }
+      } catch (e) {
+        console.warn('Failed to load payment profile', e);
+        setPaymentProfile(null);
+      }
+    }
+    loadProfile();
+    return () => { mounted = false; };
+  }, [user && user.uid, auth && auth.currentUser && auth.currentUser.uid]);
+
   // Primary inline nav order
   const primaryOrder = ["Home", "Appointments", "Inventory"];
   const primaryNav = primaryOrder.map(label => navButtons.find(b => b.label === label)).filter(Boolean);
@@ -565,55 +595,45 @@ useEffect(() => {
                     >
                       {btn.label}
                     </button>
-                    {/* Notifications bell should come first, then initials-only profile, then optional name */}
-                    {btn.label === 'Users' && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 6 }}>
-                        {/* Notification bell */}
-                        <button onClick={() => { navigate('/notifications'); setDrawerOpen(false); }} title="Notifications" style={{ background: 'none', border: 'none', cursor: 'pointer', position: 'relative', padding: 6 }}>
-                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden>
-                            <path d="M15 17h5l-1.405-1.405A2.032 2.032 0 0 1 18 14.158V11a6 6 0 0 0-5-5.917V4a1 1 0 1 0-2 0v1.083A6 6 0 0 0 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5" stroke="var(--icon-main)" strokeWidth="1.4" fill="none" />
-                          </svg>
-                          {hasNewNotifications && (
-                            <span style={{ position: 'absolute', right: 2, top: 2, width: 10, height: 10, borderRadius: 10, background: 'var(--danger, #d32f2f)', boxShadow: '0 0 0 2px rgba(0,0,0,0.06)' }} />
-                          )}
-                        </button>
-
-                        {/* Profile frame: show provider photo if available, fallback to initials */}
-                        <button
-                          ref={profileBtnRef}
-                          onClick={(e) => { if (e.altKey || e.ctrlKey) { showAvatarDebug(); return; } navigate('/account-settings'); }}
-                          style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
-                          title={fullEmail || fullName || 'Account Settings'}
-                          aria-label={fullEmail || fullName || 'Account Settings'}
-                        >
-                          {(!avatarBroken && avatarUrl) ? (
-                            <img
-                              src={avatarUrl}
-                              alt={fullName || 'Profile'}
-                              onError={(ev) => handleAvatarError(avatarUrl, ev)}
-                              style={{ width: 26, height: 26, borderRadius: 999, objectFit: 'cover', border: '1px solid var(--border-main)' }}
-                            />
-                          ) : (
-                            <div
-                              title={fullName || 'Profile'}
-                              aria-label={fullName || 'Profile'}
-                              style={{ width: 26, height: 26, borderRadius: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--border-main)', color: 'var(--text-main)', fontSize: 12, fontWeight: 700 }}
-                            >
-                              {getInitials(fullName)}
-                            </div>
-                          )}
-                        </button>
-
-                        { (isWindows || isWide) && (
-                          <button onClick={() => navigate('/account-settings')} style={{ background: 'none', border: 'none', marginLeft: 6, fontSize: 13, color: 'var(--text-main)', maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', cursor: 'pointer', padding: 0 }} title="Account Settings">
-                            {shortenName(fullName, 18)}
-                          </button>
-                        )}
-                      </div>
-                    )}
+                    {/* plain Users nav; dropdown removed */}
                   </div>
                 );
               })}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 6 }}>
+                <button onClick={() => { navigate('/notifications'); setDrawerOpen(false); }} title="Notifications" style={{ background: 'none', border: 'none', cursor: 'pointer', position: 'relative', padding: 6 }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden>
+                    <path d="M15 17h5l-1.405-1.405A2.032 2.032 0 0 1 18 14.158V11a6 6 0 0 0-5-5.917V4a1 1 0 1 0-2 0v1.083A6 6 0 0 0 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5" stroke="var(--icon-main)" strokeWidth="1.4" fill="none" />
+                  </svg>
+                  {hasNewNotifications && (
+                    <span style={{ position: 'absolute', right: 2, top: 2, width: 10, height: 10, borderRadius: 10, background: 'var(--danger, #d32f2f)', boxShadow: '0 0 0 2px rgba(0,0,0,0.06)' }} />
+                  )}
+                </button>
+
+                <button
+                  ref={profileBtnRef}
+                  onClick={(e) => { if (e.altKey || e.ctrlKey) { showAvatarDebug(); return; } navigate('/account-settings'); }}
+                  style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
+                  title={fullEmail || fullName || 'Account Settings'}
+                  aria-label={fullEmail || fullName || 'Account Settings'}
+                >
+                  {(!avatarBroken && avatarUrl) ? (
+                    <img
+                      src={avatarUrl}
+                      alt={fullName || 'Profile'}
+                      onError={(ev) => handleAvatarError(avatarUrl, ev)}
+                      style={{ width: 26, height: 26, borderRadius: 999, objectFit: 'cover', border: '1px solid var(--border-main)' }}
+                    />
+                  ) : (
+                    <div
+                      title={fullName || 'Profile'}
+                      aria-label={fullName || 'Profile'}
+                      style={{ width: 26, height: 26, borderRadius: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--border-main)', color: 'var(--text-main)', fontSize: 12, fontWeight: 700 }}
+                    >
+                      {getInitials(fullName)}
+                    </div>
+                  )}
+                </button>
+              </div>
             </div>
           ) : (
             <div style={{ width: 8 }} />
@@ -648,6 +668,18 @@ useEffect(() => {
         }}
       >
         <span style={{ marginLeft: 24, fontWeight: "var(--font-weight-main)", fontSize: 18, color: "var(--text-main)", display: "inline-block", marginBottom: 24 }} />
+        {/* Mobile drawer: primary nav + remaining nav entries so mobile matches desktop order */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, padding: '0 8px 8px 8px' }}>
+          {navButtons.map(btn => (
+            <button
+              key={btn.label}
+              style={{ ...drawerBtnStyle, display: 'flex', alignItems: 'center', gap: 10, justifyContent: 'flex-start', ...(isActivePath(btn.path) ? { color: activeLinkStyle.color, fontWeight: activeLinkStyle.fontWeight } : {}) }}
+              onClick={() => { navigate(btn.path); setDrawerOpen(false); }}
+            >
+              {btn.label}
+            </button>
+          ))}
+        </div>
         <button
           style={{ ...drawerBtnStyle, display: "flex", alignItems: "center", gap: 10, ...(isActivePath('/notifications') ? { color: activeLinkStyle.color, fontWeight: activeLinkStyle.fontWeight } : {}) }}
           onClick={() => { navigate("/notifications"); setDrawerOpen(false); }}

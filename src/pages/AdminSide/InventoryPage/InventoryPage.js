@@ -12,6 +12,7 @@ import { sanitizeForSearch } from '../../../utils/validators';
 import { adjustInventoryRecord } from '../../../utils/inventoryActions';
 import InventoryModal from './InventoryModal';
 import AddInventoryModal from './AddInventoryModal';
+import InventoryHistory from '../InventoryHistory';
 
 const InventoryRow = ({ it, qty }) => {
   return (
@@ -29,6 +30,7 @@ const InventoryPage = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [addInvOpen, setAddInvOpen] = useState(false);
   const [selectedBranch, setSelectedBranch] = useState('');
+  const [showHistory, setShowHistory] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [editValue, setEditValue] = useState('');
   const [editingLoading, setEditingLoading] = useState(false);
@@ -165,6 +167,7 @@ const InventoryPage = () => {
           <div style={{ marginLeft: 'auto' }}>
             <button onClick={() => setAddInvOpen(true)} style={{ padding: '8px 12px', marginRight: 8, borderRadius: 8, border: '1px solid var(--border-main)', background: 'transparent', color: 'var(--white)' }}>Add Item</button>
             <button onClick={() => { console.log('[InventoryPage] manual refresh'); refresh && refresh(); }} style={{ padding: '8px 12px', marginLeft: 8, borderRadius: 8 }}>Refresh</button>
+            <button onClick={() => setShowHistory(true)} style={{ padding: '8px 12px', marginLeft: 8, borderRadius: 8 }}>History</button>
           </div>
         </div>
       ) : (
@@ -184,6 +187,7 @@ const InventoryPage = () => {
             </select>
             <button onClick={() => setAddInvOpen(true)} style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid var(--border-main)', background: 'transparent', color: 'var(--white)' }}>Add Item</button>
             <button onClick={() => { console.log('[InventoryPage] manual refresh'); refresh && refresh(); }} style={{ padding: '8px 12px', borderRadius: 8 }}>Refresh</button>
+            <button onClick={() => setShowHistory(true)} style={{ padding: '8px 12px', borderRadius: 8 }}>History</button>
           </div>
         </div>
       )}
@@ -550,6 +554,15 @@ const InventoryPage = () => {
 
   <InventoryModal open={modalOpen} onClose={() => setModalOpen(false)} onAdded={() => { refresh && refresh(); setModalOpen(false); }} />
   <AddInventoryModal products={items} branches={branches} open={addInvOpen} onClose={() => setAddInvOpen(false)} onAdded={() => { refresh && refresh(); setAddInvOpen(false); }} />
+  {showHistory && (
+      <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.35)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 9999 }}>
+      <div style={{ width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', padding: 12 }}>
+        <div style={{ width: '95%', maxWidth: 980, background: 'transparent', borderRadius: 8, padding: 0, maxHeight: '90vh', overflow: 'hidden', boxSizing: 'border-box' }}>
+          <InventoryHistory branchId={selectedBranch} onClose={() => setShowHistory(false)} />
+        </div>
+      </div>
+    </div>
+  )}
     </div>
   );
 };

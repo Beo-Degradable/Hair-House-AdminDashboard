@@ -1,8 +1,9 @@
 // Users listing: realtime table, search, delete with history, open Add modal.
 import React, { useEffect, useState } from 'react';
-import { collection, onSnapshot, deleteDoc, doc, addDoc, serverTimestamp, getDoc } from 'firebase/firestore';
+import { collection, onSnapshot, doc, addDoc, serverTimestamp, getDoc, deleteDoc } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
-import { db } from '../../../firebase';
+import { db, functions } from '../../../firebase';
+import { httpsCallable } from 'firebase/functions';
 import { logHistory } from '../../../utils/historyLogger';
 import { sanitizeForSearch } from '../../../utils/validators';
 import AddUserModal from './AddUserModal';
@@ -31,17 +32,39 @@ const UsersPage = () => {
     const ok = window.confirm('Delete this user? This cannot be undone.');
     if (!ok) return;
     try {
-  // Snapshot for history
+      // Snapshot for history
       const ref = doc(db, 'users', id);
       const snap = await getDoc(ref);
       const before = snap.exists() ? snap.data() : null;
-      await deleteDoc(ref);
-  try {
-        const auth = getAuth();
-        const user = auth.currentUser;
-        const actor = user ? { uid: user.uid, email: user.email } : null;
-  try { await logHistory({ action: 'delete', collection: 'users', docId: id, before, after: null }); } catch (e) { console.warn('history logger failed', e); }
-      } catch (hx) { console.warn('Failed to write history for user delete', hx); }
+
+      // Call server-side callable to delete auth user and users doc
+      try {
+        const deleteUser = httpsCallable(functions, 'deleteAuthUser');
+        await deleteUser({ uid: id });
+        try {
+          const auth = getAuth();
+          const user = auth.currentUser;
+          const actor = user ? { uid: user.uid, email: user.email } : null;
+          try { await logHistory({ action: 'delete', collection: 'users', docId: id, before, after: null }); } catch (e) { console.warn('history logger failed', e); }
+        } catch (hx) { console.warn('Failed to write history for user delete', hx); }
+      } catch (fnErr) {
+        // More helpful error handling: if the callable isn't available or fails due to deployment/billing,
+        // fall back to deleting the users document locally and inform the operator that the Auth user
+        // was NOT deleted and requires server-side action.
+        console.error('Callable deleteAuthUser failed', fnErr);
+        const code = fnErr && (fnErr.code || (fnErr.data && fnErr.data.code)) ? (fnErr.code || fnErr.data.code) : null;
+        const message = fnErr && (fnErr.message || (fnErr.data && fnErr.data.message)) ? (fnErr.message || fnErr.data.message) : String(fnErr);
+        // Attempt to delete the Firestore users doc as a best-effort fallback
+        try {
+          await deleteDoc(ref);
+          try { await logHistory({ action: 'delete', collection: 'users', docId: id, before, after: null }); } catch (e) { console.warn('history logger failed', e); }
+          alert('Deleted users document locally, but failed to delete Authentication user. Server error: ' + (code || message));
+        } catch (delErr) {
+          console.error('Fallback deleteDoc also failed', delErr);
+          const delMsg = delErr && (delErr.code || delErr.message) ? (delErr.code || delErr.message) : String(delErr);
+          alert('Failed to delete user (auth + firestore). Callable error: ' + (code || message) + ' — Firestore delete error: ' + delMsg);
+        }
+      }
     } catch (err) {
       console.error('Failed to delete user', err);
       alert('Failed to delete user: ' + (err.message || err));
@@ -85,7 +108,11 @@ const UsersPage = () => {
                 <td style={{ padding: '8px 6px', textTransform: 'capitalize' }}>{u.role}</td>
                 {showBranchColumn ? <td style={{ padding: '8px 6px' }}>{u.role === 'stylist' ? (u.branchName || '') : ''}</td> : null}
                 <td style={{ padding: '8px 6px' }}>
-                  <button onClick={() => handleDelete(u.id)} className="btn btn-danger" style={{ padding: '6px 8px' }}>Delete</button>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button onClick={() => handleAuthAction(u.id, 'disable')} className="btn" style={{ padding: '6px 8px' }}>Disable</button>
+                    <button onClick={() => handleAuthAction(u.id, 'revoke')} className="btn" style={{ padding: '6px 8px' }}>Revoke</button>
+                    <button onClick={() => handleDelete(u.id)} className="btn btn-danger" style={{ padding: '6px 8px' }}>Delete</button>
+                  </div>
                 </td>
               </tr>
             ))}
@@ -97,5 +124,31 @@ const UsersPage = () => {
     </div>
   );
 };
+
+  const handleAuthAction = async (id, action) => {
+    if (!id) return;
+    const ok = window.confirm(`Proceed to ${action} this user's authentication?`);
+    if (!ok) return;
+
+    try {
+      const fn = httpsCallable(functions, 'updateAuthUser');
+      try {
+        const res = await fn({ uid: id, action });
+        console.log('updateAuthUser result', res);
+        alert(`Success: ${action}`);
+        try { await logHistory({ action: 'auth-'+action, collection: 'users', docId: id, before: null, after: null }); } catch (e) { console.warn('history logger failed', e); }
+        return;
+      } catch (fnErr) {
+        console.warn('Callable updateAuthUser failed', fnErr);
+        // Fallback: instruct admin to run local script with service account
+        const cmd = `node scripts/modifyUserAuth.js ${id} --action ${action} --confirm`;
+        alert(`Could not run server callable. Run this admin command from the project root (requires service account):\n\n${cmd}`);
+        return;
+      }
+    } catch (err) {
+      console.error('Failed to ${action} user', err);
+      alert('Failed to ' + action + ' user: ' + (err.message || err));
+    }
+  };
 
 export default UsersPage;

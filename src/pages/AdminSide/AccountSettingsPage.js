@@ -180,7 +180,22 @@ export default function AccountSettingsPage() {
               {linking ? 'Linking…' : 'Use Google photo'}
             </button>
           )}
-          <button style={{ ...styles.btn, ...styles.btnSecondary, width: isNarrow ? '100%' : 'auto' }} onClick={() => setChangeMode('password')}>Change password</button>
+          <button
+            style={{ ...styles.btn, ...styles.btnSecondary, width: isNarrow ? '100%' : 'auto' }}
+            onClick={async () => {
+              setStatus('');
+              try {
+                if (!email) { setStatus('No email available for account'); return; }
+                await sendPasswordResetEmail(auth, email);
+                setStatus('Password reset email sent to ' + email);
+              } catch (e) {
+                console.error('sendPasswordResetEmail failed', e);
+                setStatus(e?.message || 'Failed to send reset email');
+              }
+            }}
+          >
+            Change password
+          </button>
           <button
             style={{ ...styles.btn, ...styles.btnDanger, width: isNarrow ? '100%' : 'auto' }}
             onClick={async () => {

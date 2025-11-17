@@ -93,30 +93,9 @@ export default function AppointmentPage() {
               const svc = snap.docs[0].data();
               const productsUsed = svc.productsUsed || [];
 
-              // Deduct products once
-              if (!editing.productsDeducted && productsUsed.length > 0) {
-                for (const p of productsUsed) {
-                  if (!p || !p.productId) continue;
-                  const pid = p.productId;
-                  const qty = Number(p.qty || 0);
-                  if (qty === 0) continue;
-                  try {
-                    await adjustBranchQty(db, pid, editing.branch || (editing.branchName || 'default'), -qty, authUser, `Appointment ${editing.id} service ${svcName}`);
-                  } catch (errAdj) {
-                    console.warn('adjustBranchQty failed', errAdj);
-                  }
-                  try {
-                    await adjustInventoryRecord(db, pid, editing.branch || (editing.branchName || 'default'), -qty, authUser, `Appointment ${editing.id} service ${svcName}`);
-                  } catch (errInv) {
-                    console.warn('adjustInventoryRecord failed', errInv);
-                  }
-                }
-                try {
-                  await updateAppointment(editing.id, { productsDeducted: true }, editing);
-                } catch (errFlag) {
-                  console.warn('failed to mark productsDeducted', errFlag);
-                }
-              }
+              // Product deduction intentionally disabled: inventory adjustments
+              // are no longer performed automatically when appointments complete.
+              // (Retained code below handles revenue recording only.)
 
               // Create payment record once
               if (!editing.revenueRecorded) {
