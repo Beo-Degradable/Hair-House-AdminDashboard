@@ -138,9 +138,37 @@ export default function StylistAccountPage() {
     try {
       await sendPasswordResetEmail(auth, email);
       setPwMsg('Password reset email sent. Check your inbox.');
+      showSnack('Password reset email sent. Check your inbox.', 'success');
     } catch (e) {
       setPwMsg(e?.message || 'Failed to send password reset email');
+      showSnack(e?.message || 'Failed to send password reset email', 'error');
     }
+  };
+
+  // Mobile behavior: send reset email for both Change Email and Change Password buttons
+  const sendResetForMobile = async () => {
+    if (!email) { setEmailMsg('No email found on account'); setPwMsg('No email found on account'); return; }
+    setEmailMsg(''); setPwMsg('');
+    try {
+      await sendPasswordResetEmail(auth, email);
+      const msg = 'Password reset email sent. Check your inbox.';
+      setPwMsg(msg);
+      setEmailMsg(msg);
+      await logAccountChange('sendResetEmail', { to: email });
+      showSnack(msg, 'success');
+    } catch (e) {
+      const m = e?.message || 'Failed to send password reset email';
+      setPwMsg(m);
+      setEmailMsg(m);
+      showSnack(m, 'error');
+    }
+  };
+
+  // Snackbar for lightweight user feedback
+  const [snack, setSnack] = useState({ open: false, message: '', type: 'info' });
+  const showSnack = (message, type = 'info', timeout = 4000) => {
+    setSnack({ open: true, message, type });
+    setTimeout(() => setSnack({ open: false, message: '', type }), timeout);
   };
 
   if (loading) return <div style={{ padding: 16 }}>Loading…</div>;
@@ -155,8 +183,14 @@ export default function StylistAccountPage() {
         email={email}
         initials={initials}
         showButtons={!isWide}
-        onToggleEmail={() => { setShowEmailBox(v => !v); setShowPasswordBox(false); }}
-        onTogglePassword={() => { setShowPasswordBox(v => !v); setShowEmailBox(false); }}
+        onToggleEmail={() => {
+          if (!isWide) return sendResetForMobile();
+          setShowEmailBox(v => !v); setShowPasswordBox(false);
+        }}
+        onTogglePassword={() => {
+          if (!isWide) return sendResetForMobile();
+          setShowPasswordBox(v => !v); setShowEmailBox(false);
+        }}
       />
 
       {/* Info + actions card for wide screens (Account ID removed) */}
@@ -215,6 +249,14 @@ export default function StylistAccountPage() {
       )}
 
       {error && <div style={{ color: 'var(--danger,#d32f2f)' }}>{error}</div>}
+      {/* Snackbar */}
+      {snack.open && (
+        <div style={{ position: 'fixed', left: '50%', bottom: 24, transform: 'translateX(-50%)', zIndex: 20000 }}>
+          <div style={{ minWidth: 240, maxWidth: '90vw', background: snack.type === 'error' ? '#b91c1c' : (snack.type === 'success' ? '#166534' : '#333'), color: '#fff', padding: '10px 16px', borderRadius: 8, boxShadow: '0 6px 24px rgba(0,0,0,0.4)', textAlign: 'center' }}>
+            {snack.message}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -225,21 +267,21 @@ function ResponsiveHeader({ name, email, initials, showButtons = true, onToggleE
   return (
     <div style={{ background: 'var(--bg-drawer)', border: '1px solid var(--border-main)', borderRadius: 8, padding: 12, marginBottom: 12 }}>
       {/* Top row: avatar + name/email */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
-        <div style={{ width: 72, height: 72, borderRadius: '50%', overflow: 'hidden', background: 'var(--border-main)', flex: '0 0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-main)', fontWeight: 800, fontSize: 20 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10, flexWrap: 'wrap' }}>
+        <div style={{ width: 72, height: 72, borderRadius: '50%', overflow: 'hidden', background: 'var(--border-main)', flex: '0 0 72px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-main)', fontWeight: 800, fontSize: 20 }}>
           {initials || 'ST'}
         </div>
-        <div style={{ minWidth: 0 }}>
-          <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-main)', lineHeight: 1.2 }}>{name}</div>
-          <div style={{ color: 'var(--icon-main)', fontSize: 11, marginTop: 4 }}>{email}</div>
+        <div style={{ minWidth: 0, flex: '1 1 auto' }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-main)', lineHeight: 1.2, wordBreak: 'break-word' }}>{name}</div>
+          <div style={{ color: 'var(--icon-main)', fontSize: 12, marginTop: 4, wordBreak: 'break-word' }}>{email}</div>
         </div>
       </div>
 
       {/* Buttons row below (mobile only) */}
       {showButtons && (
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <button onClick={onToggleEmail} className="btn" style={{ padding: '6px 10px', fontSize: 12, borderRadius: 6, border: '1px solid var(--border-main)', background: 'var(--btn-bg,none)', cursor: 'pointer', color: 'var(--text-main)' }}>Change Email</button>
-          <button onClick={onTogglePassword} className="btn" style={{ padding: '6px 10px', fontSize: 12, borderRadius: 6, border: '1px solid var(--border-main)', background: 'var(--btn-bg,none)', cursor: 'pointer', color: 'var(--text-main)' }}>Change Password</button>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 6 }}>
+          <button onClick={onToggleEmail} className="btn" style={{ padding: '8px 12px', fontSize: 14, borderRadius: 6, border: '1px solid var(--border-main)', background: 'var(--btn-bg,none)', cursor: 'pointer', color: 'var(--text-main)', flex: '1 1 auto', minWidth: 140 }}>Change Email</button>
+          <button onClick={onTogglePassword} className="btn" style={{ padding: '8px 12px', fontSize: 14, borderRadius: 6, border: '1px solid var(--border-main)', background: 'var(--btn-bg,none)', cursor: 'pointer', color: 'var(--text-main)', flex: '1 1 auto', minWidth: 140 }}>Change Password</button>
         </div>
       )}
     </div>
