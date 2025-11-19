@@ -98,21 +98,38 @@ export default function AppointmentPage() {
               // (Retained code below handles revenue recording only.)
 
               // Create payment record once
-              if (!editing.revenueRecorded) {
+                  if (!editing.revenueRecorded) {
                 try {
-                  const amount = Number(svc.price || 0);
-                  if (!Number.isNaN(amount) && amount > 0) {
+                  // compute total and deposit (reservation). deposit may be stored on the appointment
+                  const totalPrice = Number(editing.price || svc.price || 0) || 0;
+                  const deposit = Number(editing.reservationPaidAmount || editing.reservationFee || 0) || 0;
+
+                  // prefer explicit payment amount provided by the caller (admin modal) — treat that as the amount collected now
+                  let amountToRecord;
+                  let finalPrice;
+                  if (typeof payload.paymentAmount === 'number' && !Number.isNaN(payload.paymentAmount)) {
+                    amountToRecord = payload.paymentAmount;
+                    finalPrice = Math.round((deposit + amountToRecord) * 100) / 100;
+                  } else {
+                    // charge the remaining balance (total - deposit)
+                    amountToRecord = Math.max(0, totalPrice - deposit);
+                    finalPrice = totalPrice;
+                  }
+
+                  if (!Number.isNaN(amountToRecord) && amountToRecord > 0) {
                     await addDoc(collection(db, 'payments'), {
                       appointmentId: editing.id,
                       serviceName: svcName,
-                      amount,
+                      amount: amountToRecord,
                       branch: editing.branch || null,
                       createdBy: authUser ? (authUser.uid || authUser) : null,
                       createdAt: serverTimestamp(),
                       source: 'appointment'
                     });
                   }
-                  await updateAppointment(editing.id, { revenueRecorded: true }, editing);
+
+                  // store revenueRecorded and finalPrice (total service price or deposit+collected)
+                  await updateAppointment(editing.id, { revenueRecorded: true, finalPrice }, editing);
                 } catch (payErr) {
                   console.warn('failed to record payment', payErr);
                 }

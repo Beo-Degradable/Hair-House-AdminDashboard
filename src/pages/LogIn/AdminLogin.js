@@ -1,14 +1,39 @@
 
 import React, { useState, useContext } from "react";
+import { useNavigate } from 'react-router-dom';
 import "./AdminLogin.css";
 import { auth, db } from "../../firebase";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { collection, query, where, getDocs } from "firebase/firestore";
 
-// Placeholder logo component (replace with actual logo if available)
-const Logo = () => (
-	<div className="logo-placeholder">LOGO</div>
-);
+// Logo component that loads the image from the public folder.
+// Put your image at `public/LogoH.png`.
+const Logo = () => {
+	const [err, setErr] = React.useState(false);
+	// show only the image (no text) and make it slightly larger for better visibility
+	if (!err) {
+		return (
+			<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%' }}>
+				<img
+					src="/LogoH.png"
+					alt="Hair House"
+					onError={() => setErr(true)}
+					style={{ width: 120, height: 120, objectFit: 'contain', borderRadius: 12 }}
+				/>
+			</div>
+		);
+	}
+	// fallback: show a larger SVG placeholder without text
+	return (
+		<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%' }}>
+			<div style={{ width: 120, height: 120, borderRadius: 12, background: 'var(--bg-drawer)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--border-main)' }}>
+				<svg width="72" height="72" viewBox="0 0 24 24" fill="none">
+					<path d="M12 2 L15 8 L22 9 L17 14 L18 21 L12 18 L6 21 L7 14 L2 9 L9 8 Z" fill="#FFD700" />
+				</svg>
+			</div>
+		</div>
+	);
+};
 
 // Ripple background component
 const RippleBackground = () => (
@@ -53,6 +78,8 @@ const AdminLogin = ({ onLogin }) => {
 		}
 	};
 
+		const navigate = useNavigate();
+
 		const handleSubmit = async (e) => {
 			e.preventDefault();
 			setError("");
@@ -61,8 +88,8 @@ const AdminLogin = ({ onLogin }) => {
 			if (!v.ok) { setError(v.message || 'Invalid input'); return; }
 			setLoading(true);
 			try {
-				// Firebase Auth sign in
-				await signInWithEmailAndPassword(auth, email, password);
+						// Firebase Auth sign in
+						await signInWithEmailAndPassword(auth, email, password);
 				// Query Firestore for user with matching email
 				const q = query(collection(db, "users"), where("email", "==", email));
 				const querySnapshot = await getDocs(q);
@@ -81,13 +108,28 @@ const AdminLogin = ({ onLogin }) => {
 						console.warn("Failed to set user in context:", ctxErr);
 					}
 
-					if (data.role === "admin") {
-						onLogin("admin");
-					} else if (data.role === "stylist") {
-						onLogin("stylist");
-					} else {
-						setError("Role not assigned. Contact admin.");
-					}
+										if (data.role === "admin") {
+												onLogin("admin");
+												// after role is set, navigate to saved redirect if present
+												try {
+													const r = localStorage.getItem('postAuthRedirect');
+													if (r) {
+														localStorage.removeItem('postAuthRedirect');
+														navigate(r, { replace: true });
+													}
+												} catch (e) {}
+										} else if (data.role === "stylist") {
+												onLogin("stylist");
+												try {
+													const r = localStorage.getItem('postAuthRedirect');
+													if (r) {
+														localStorage.removeItem('postAuthRedirect');
+														navigate(r, { replace: true });
+													}
+												} catch (e) {}
+										} else {
+												setError("Role not assigned. Contact admin.");
+										}
 				} else {
 					// If there's no user doc, still try to populate user from auth profile
 					if (auth.currentUser) {
@@ -104,6 +146,8 @@ const AdminLogin = ({ onLogin }) => {
 			}
 			setLoading(false);
 		};
+
+
 
 					return (
 						<div className="admin-login-bg">

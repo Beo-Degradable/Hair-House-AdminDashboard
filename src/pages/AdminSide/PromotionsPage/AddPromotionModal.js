@@ -19,6 +19,8 @@ export default function AddPromotionModal({ open, onClose, onCreated, defaultBra
   const [start, setStart] = useState('');
   const [end, setEnd] = useState('');
   const [status, setStatus] = useState('active'); // active | expired
+  const [discountType, setDiscountType] = useState(''); // '' | 'percent' | 'amount'
+  const [discountValue, setDiscountValue] = useState('');
   const [loading, setLoading] = useState(false);
 
   const branches = ['Vergara', 'Lawas', 'Lipa', 'Tanauan'];
@@ -38,6 +40,8 @@ export default function AddPromotionModal({ open, onClose, onCreated, defaultBra
     setServiceId('');
     setBranch(defaultBranch || '');
     setType('');
+    setDiscountType('');
+    setDiscountValue('');
     setStart('');
     setEnd('');
     setStatus('active');
@@ -57,6 +61,22 @@ export default function AddPromotionModal({ open, onClose, onCreated, defaultBra
       setLoading(true);
 
       const svc = services.find(s => s.id === serviceId);
+      // validate discount input if discount type selected
+      let dv = null;
+      if (discountType) {
+        if (discountValue === '' || Number.isNaN(Number(discountValue))) {
+          alert('Please enter a numeric discount value');
+          setLoading(false);
+          return;
+        }
+        dv = Number(discountValue);
+        if (discountType === 'percent' && (dv < 0 || dv > 100)) {
+          alert('Percent discount must be between 0 and 100');
+          setLoading(false);
+          return;
+        }
+      }
+
       const data = {
         title: title.trim(),
         subtitle: subtitle.trim() || null,
@@ -64,6 +84,8 @@ export default function AddPromotionModal({ open, onClose, onCreated, defaultBra
         serviceName: svc ? svc.name : null,
         branch,
         type,
+        discountType: discountType || null,
+        discountValue: dv !== null ? dv : null,
         startDate,
         endDate,
         status,
@@ -108,6 +130,18 @@ export default function AddPromotionModal({ open, onClose, onCreated, defaultBra
               <option value='Flash Offers'>Flash Offers</option>
               <option value='Promo'>Promo</option>
             </select>
+          </label>
+        </div>
+        <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end' }}>
+          <label style={{ fontSize: 13, flex: 1 }}>Discount Type
+            <select value={discountType} onChange={e => setDiscountType(e.target.value)} style={{ ...inputStyle }}>
+              <option value=''>-- none --</option>
+              <option value='percent'>Percent (%)</option>
+              <option value='amount'>Amount (₱)</option>
+            </select>
+          </label>
+          <label style={{ fontSize: 13, width: 160 }}>Value
+            <input value={discountValue} onChange={e => setDiscountValue(e.target.value)} placeholder='e.g. 10 or 100' style={{ ...inputStyle, width: '100%' }} />
           </label>
         </div>
         <div style={{ display: 'flex', gap: 12 }}>

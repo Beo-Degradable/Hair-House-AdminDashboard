@@ -13,6 +13,8 @@ export default function UpdatePromotionModal({ open, data, onClose, fieldWidths 
   const [services, setServices] = useState([]);
   const [type, setType] = useState('');
   const [branch, setBranch] = useState('');
+  const [discountType, setDiscountType] = useState('');
+  const [discountValue, setDiscountValue] = useState('');
   const [start, setStart] = useState('');
   const [end, setEnd] = useState('');
   const [status, setStatus] = useState('active');
@@ -34,6 +36,8 @@ export default function UpdatePromotionModal({ open, data, onClose, fieldWidths 
     setServiceId(data.serviceId || '');
     setType(data.type || '');
     setBranch(data.branch || '');
+    setDiscountType(data.discountType || '');
+    setDiscountValue(data.discountValue !== undefined && data.discountValue !== null ? String(data.discountValue) : '');
     const s = data.startDate?.toDate ? data.startDate.toDate() : (data.startDate instanceof Date ? data.startDate : (data.startDate ? new Date(data.startDate) : null));
     const e = data.endDate?.toDate ? data.endDate.toDate() : (data.endDate instanceof Date ? data.endDate : (data.endDate ? new Date(data.endDate) : null));
     setStart(s ? formatDateInput(s) : '');
@@ -61,6 +65,22 @@ export default function UpdatePromotionModal({ open, data, onClose, fieldWidths 
       const endDate = new Date(end);
       if (endDate < startDate) { alert('End must be after start'); setSaving(false); return; }
       const svc = services.find(s => s.id === serviceId);
+      // validate discount input if discount type selected
+      let dv = null;
+      if (discountType) {
+        if (discountValue === '' || Number.isNaN(Number(discountValue))) {
+          alert('Please enter a numeric discount value');
+          setSaving(false);
+          return;
+        }
+        dv = Number(discountValue);
+        if (discountType === 'percent' && (dv < 0 || dv > 100)) {
+          alert('Percent discount must be between 0 and 100');
+          setSaving(false);
+          return;
+        }
+      }
+
       const updates = {
         title: title.trim(),
         subtitle: subtitle.trim() || null,
@@ -68,6 +88,8 @@ export default function UpdatePromotionModal({ open, data, onClose, fieldWidths 
         serviceName: svc ? svc.name : (data.serviceName || null),
         branch,
         type,
+        discountType: discountType || null,
+        discountValue: dv !== null ? dv : null,
         startDate,
         endDate,
         status,
@@ -108,6 +130,18 @@ export default function UpdatePromotionModal({ open, data, onClose, fieldWidths 
               <option value='Flash Offers'>Flash Offers</option>
               <option value='Promo'>Promo</option>
             </select>
+          </label>
+        </div>
+        <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end' }}>
+          <label style={{ fontSize: 13, flex: 1 }}>Discount Type
+            <select value={discountType} onChange={e => setDiscountType(e.target.value)} style={{ ...inputStyle }}>
+              <option value=''>-- none --</option>
+              <option value='percent'>Percent (%)</option>
+              <option value='amount'>Amount (₱)</option>
+            </select>
+          </label>
+          <label style={{ fontSize: 13, width: 160 }}>Value
+            <input value={discountValue} onChange={e => setDiscountValue(e.target.value)} placeholder='e.g. 10 or 100' style={{ ...inputStyle, width: '100%' }} />
           </label>
         </div>
         <div style={{ display: 'flex', gap: 12 }}>

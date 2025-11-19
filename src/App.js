@@ -26,12 +26,14 @@ import InventoryPage from "./pages/AdminSide/InventoryPage/InventoryPage";
 import UsersPage from "./pages/AdminSide/UsersPage/UsersPage";
 import PaymentProfilesPage from "./pages/AdminSide/PaymentProfilesPage";
 import { AuthContext } from "./context/AuthContext";
+import SessionAlert from './components/SessionAlert';
 
 function App() {
   const { role, setRole } = useContext(AuthContext);
 
   return (
     <BrowserRouter>
+      <SessionAlert />
       {!role && <AdminLogin onLogin={setRole} />}
       {role === "stylist" && (
         <Routes>

@@ -8,15 +8,18 @@ import { auth, db } from "../../firebase";
 import { useNavigate, useLocation } from "react-router-dom";
 import { collection, query as q, orderBy, limit, onSnapshot, doc as docRef, getDoc } from 'firebase/firestore';
 
+// Standard admin navigation buttons (used by the topbar). The drawer
+// rendering below intentionally omits printing these entries so the
+// drawer remains minimal while the topbar provides primary navigation.
 const navButtons = [
-  { label: "Home", path: "/" },
-  { label: "Appointments", path: "/appointments" },
-  { label: "Products", path: "/products" },
-  { label: "Services", path: "/services" },
-  { label: "Promotions", path: "/promotions" },
-  { label: "Inventory", path: "/inventory" },
-  { label: "Profiles", path: "/profiles" },
-  { label: "Users", path: "/users" },
+  { label: 'Home', path: '/' },
+  { label: 'Appointments', path: '/appointments' },
+  { label: 'Products', path: '/products' },
+  { label: 'Services', path: '/services' },
+  { label: 'Promotions', path: '/promotions' },
+  { label: 'Inventory', path: '/inventory' },
+  { label: 'Profiles', path: '/profiles' },
+  { label: 'Users', path: '/users' },
 ];
 
 const drawerWidth = 260;
@@ -669,17 +672,9 @@ useEffect(() => {
       >
         <span style={{ marginLeft: 24, fontWeight: "var(--font-weight-main)", fontSize: 18, color: "var(--text-main)", display: "inline-block", marginBottom: 24 }} />
         {/* Mobile drawer: primary nav + remaining nav entries so mobile matches desktop order */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, padding: '0 8px 8px 8px' }}>
-          {navButtons.map(btn => (
-            <button
-              key={btn.label}
-              style={{ ...drawerBtnStyle, display: 'flex', alignItems: 'center', gap: 10, justifyContent: 'flex-start', ...(isActivePath(btn.path) ? { color: activeLinkStyle.color, fontWeight: activeLinkStyle.fontWeight } : {}) }}
-              onClick={() => { navigate(btn.path); setDrawerOpen(false); }}
-            >
-              {btn.label}
-            </button>
-          ))}
-        </div>
+        {/* Intentionally left minimal: primary nav is available in the topbar.
+            Drawer should not duplicate the full nav, so we keep the drawer
+            minimal and rely on the topbar buttons for navigation. */}
         <button
           style={{ ...drawerBtnStyle, display: "flex", alignItems: "center", gap: 10, ...(isActivePath('/notifications') ? { color: activeLinkStyle.color, fontWeight: activeLinkStyle.fontWeight } : {}) }}
           onClick={() => { navigate("/notifications"); setDrawerOpen(false); }}

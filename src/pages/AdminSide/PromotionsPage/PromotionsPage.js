@@ -2,6 +2,7 @@ import React, { useMemo, useState, useEffect } from 'react';
 import BranchSelector from '../../../components/BranchSelector';
 import AddPromotionModal from './AddPromotionModal';
 import UpdatePromotionModal from './UpdatePromotionModal';
+import { formatCurrency } from '../../../utils/formatters';
 import { db } from '../../../firebase';
 import { collection, onSnapshot, query, where, orderBy } from 'firebase/firestore';
 
@@ -107,6 +108,7 @@ export default function PromotionsPage() {
                 <th style={thStyle}>Title</th>
                 <th style={thStyle}>Subtitle</th>
                 <th style={thStyle}>Service</th>
+                <th style={thStyle}>Value</th>
                 <th style={thStyle}>Start</th>
                 <th style={thStyle}>End</th>
                 <th style={thStyle}>Status</th>
@@ -119,6 +121,7 @@ export default function PromotionsPage() {
                   <td style={tdStyle}>{p.title || '-'}</td>
                   <td style={tdStyle}>{p.subtitle || '-'}</td>
                   <td style={tdStyle}>{p.serviceName || p.service || '-'}</td>
+                  <td style={tdStyle}>{(p.discountType === 'percent' && p.discountValue != null) ? `${p.discountValue}` : (p.discountType === 'amount' && p.discountValue != null) ? formatCurrency(Number(p.discountValue)) : '-'}</td>
                   <td style={tdStyle}>{formatDate(p.startDate)}</td>
                   <td style={tdStyle}>{formatDate(p.endDate)}</td>
                   <td style={{ ...tdStyle, fontWeight: 600, color: statusColor(p.status) }}>{p.status || '-'}</td>

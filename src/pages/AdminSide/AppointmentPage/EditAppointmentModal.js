@@ -4,6 +4,8 @@ import { parseDurationToMinutes } from '../../../utils/time';
 export default function EditAppointmentModal({ appointment = null, open = false, onClose = () => {}, onSubmit = () => {} }) {
   // This modal only allows updating the appointment status. Other fields are shown read-only.
   const [form, setForm] = useState({ status: 'booked' });
+  const [paymentAmount, setPaymentAmount] = useState('');
+  const [paymentError, setPaymentError] = useState('');
 
   useEffect(() => {
     if (!appointment) return;
@@ -24,7 +26,22 @@ export default function EditAppointmentModal({ appointment = null, open = false,
         if (!ok) return;
         await onSubmit({ status: 'cancel_requested' });
       } else {
-        await onSubmit({ status: form.status });
+        // If completing, validate paymentAmount (if provided) and pass it through
+        if (String(form.status).toLowerCase() === 'completed') {
+          // paymentAmount may be empty -> allow backend to use service price instead
+          if (paymentAmount !== '') {
+            const num = Number(paymentAmount);
+            if (Number.isNaN(num) || num <= 0) {
+              setPaymentError('Enter a valid numeric amount');
+              return;
+            }
+            await onSubmit({ status: form.status, paymentAmount: num });
+          } else {
+            await onSubmit({ status: form.status });
+          }
+        } else {
+          await onSubmit({ status: form.status });
+        }
       }
       onClose();
     } catch (err) {
@@ -83,6 +100,32 @@ export default function EditAppointmentModal({ appointment = null, open = false,
               <option value="cancelled">Cancelled</option>
             </select>
           </div>
+
+          {/* When admin selects Completed, show payment input */}
+          {String(form.status).toLowerCase() === 'completed' && (
+            <div style={{ marginTop: 12 }}>
+              <label style={{ display: 'block', fontSize: 12 }}>Payment amount (₱)</label>
+              <input
+                inputMode="decimal"
+                value={paymentAmount}
+                onChange={(e) => {
+                  // accept only digits and at most one dot; strip other characters
+                  const v = e.target.value;
+                  const cleaned = v.replace(/[^0-9.]/g, '');
+                  // prevent multiple dots
+                  const parts = cleaned.split('.');
+                  let normalized = parts[0];
+                  if (parts.length > 1) normalized += '.' + parts.slice(1).join('');
+                  setPaymentAmount(normalized);
+                  setPaymentError('');
+                }}
+                placeholder="e.g. 500.00"
+                style={{ width: '100%', padding: 8, background: '#2b2b2b', border: '1px solid var(--border-main)', color: '#fff', marginTop: 6 }}
+              />
+              {paymentError && <div style={{ color: '#ffb4a2', marginTop: 6 }}>{paymentError}</div>}
+              <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 6 }}>Leave blank to use service default price.</div>
+            </div>
+          )}
 
           <div className="modal-actions" style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 12 }}>
             <button type="button" onClick={onClose} className="btn">Close</button>

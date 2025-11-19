@@ -76,7 +76,6 @@ const StylistAppointmentPage = () => {
   // Track processed appointments to avoid duplicating updates in one session
   const processedAutoComplete = useRef(new Set());
   const processedRevenue = useRef(new Set());
-  const processedDeduct = useRef(new Set());
 
   // Helper: find matching service doc for an appointment
   const resolveServiceForAppointment = (a) => {
@@ -135,8 +134,8 @@ const StylistAppointmentPage = () => {
           }
         }
       }
-      // flag as deducted
-      try { await updateAppointment(a.id, { inventoryDeducted: true }, a); } catch (e) { /* non-fatal */ }
+      // NOTE: automatic inventory deduction for services was removed.
+      // Keep this helper available for manual/explicit deductions if needed.
       return true;
     } catch (e) {
       console.warn('deductProductsForAppointment error', e);
@@ -150,27 +149,32 @@ const StylistAppointmentPage = () => {
     // Revenue
     if (!a.revenueRecorded) {
       try {
-        const amount = (typeof a.price === 'number' ? a.price : null) ?? (svc && typeof svc.price === 'number' ? svc.price : 0);
-        if (amount && amount > 0) {
+        // compute total and deposit (reservation) if present on the appointment
+        const totalPrice = Number(a.price || (svc && svc.price) || 0) || 0;
+        const deposit = Number(a.reservationPaidAmount || a.reservationFee || 0) || 0;
+
+        // for auto flows, charge the remaining balance (total - deposit)
+        const amountToRecord = Math.max(0, totalPrice - deposit);
+        if (!Number.isNaN(amountToRecord) && amountToRecord > 0) {
           await addDoc(collection(db, 'payments'), {
             appointmentId: a.id,
             serviceName: a.service || (svc ? svc.name : null) || null,
-            amount,
+            amount: amountToRecord,
             branch: a.branch || a.branchName || null,
             createdBy: user ? (user.uid || null) : null,
             createdAt: serverTimestamp(),
             source: a.isWalkIn ? 'walkin' : 'auto'
           });
         }
+        // store finalPrice as the total service price for audit (deposit + collected = total)
+        try { await updateAppointment(a.id, { revenueRecorded: true, finalPrice: totalPrice }, a); } catch (e) {}
       } catch (e) {
         console.warn('payments write failed', e);
       }
-      try { await updateAppointment(a.id, { revenueRecorded: true }, a); } catch (e) {}
     }
     // Inventory deduction
-    if (!a.inventoryDeducted) {
-      await deductProductsForAppointment(a, svc);
-    }
+    // Inventory deduction intentionally omitted for services.
+    // Use manual/product flows to adjust inventory when necessary.
   };
 
   // Auto-complete past appointments and trigger side-effects for completed ones
@@ -197,11 +201,10 @@ const StylistAppointmentPage = () => {
         return; // skip next checks in this iteration
       }
 
-      // If already completed, ensure revenue/deduction (once per session)
+      // If already completed, ensure revenue (once per session)
       if (status === 'completed') {
-        if (!processedRevenue.current.has(id) || !processedDeduct.current.has(id)) {
+        if (!processedRevenue.current.has(id)) {
           processedRevenue.current.add(id);
-          processedDeduct.current.add(id);
           (async () => { try { await ensureRevenueAndDeduct(a); } catch (_) {} })();
         }
       }
@@ -394,7 +397,7 @@ const StylistAppointmentPage = () => {
                       try {
                         if (svc && svc.price) {
                           const amount = Number(svc.price) || 0;
-                          if (amount > 0) {
+                            if (amount > 0) {
                             await addDoc(collection(db, 'payments'), {
                               appointmentId: apptId,
                               serviceName: svc.name,
@@ -404,8 +407,8 @@ const StylistAppointmentPage = () => {
                               createdAt: serverTimestamp(),
                               source: 'walkin'
                             });
-                            // mark appointment as having revenue recorded
-                            await updateAppointment(apptId, { revenueRecorded: true }, payload);
+                            // mark appointment as having revenue recorded and store final price
+                            await updateAppointment(apptId, { revenueRecorded: true, finalPrice: amount }, payload);
                           }
                         }
                       } catch (payErr) {
