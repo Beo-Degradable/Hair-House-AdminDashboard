@@ -158,7 +158,7 @@ If you want, I can add a small admin script to the repo that will create the use
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
             <div>
               <label style={{ display: 'block', fontSize: 12 }}>Name</label>
-              <input value={name} onChange={e => setName(sanitizeName(e.target.value))} style={{ width: '80%', padding: 8, background: 'var(--surface)', border: '1px solid var(--border-main)', color: 'var(--text-primary)' }} />
+              <input value={name} onChange={e => setName(e.target.value)} style={{ width: '80%', padding: 8, background: 'var(--surface)', border: '1px solid var(--border-main)', color: 'var(--text-primary)' }} />
             </div>
             <div>
               <label style={{ display: 'block', fontSize: 12 }}>Email</label>

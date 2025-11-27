@@ -34,11 +34,14 @@ const EditServiceModal = ({ open, id, onClose }) => {
 
   const [products, setProducts] = useState([]);
   const [productSearch, setProductSearch] = useState('');
+  // tags removed
   useEffect(() => {
     const col = collection(db, 'products');
     const unsub = onSnapshot(col, snap => setProducts(snap.docs.map(d => ({ id: d.id, ...d.data() }))), () => {});
     return () => unsub();
   }, []);
+
+  // tags removed
 
   if (!open) return null;
 
@@ -53,8 +56,10 @@ const EditServiceModal = ({ open, id, onClose }) => {
       const beforeSnap = await getDoc(ref);
       const before = beforeSnap.exists() ? beforeSnap.data() : null;
 
+      const cleanName = sanitizeName(data.name || '');
+
       await updateDoc(ref, {
-        name: data.name,
+        name: cleanName,
         price: Number(data.price) || 0,
         duration: localDurationMinutes ? `${localDurationMinutes}m` : (data.duration || ''),
         durationMinutes: Number(localDurationMinutes) || 0,
@@ -67,7 +72,7 @@ const EditServiceModal = ({ open, id, onClose }) => {
         const auth = getAuth();
         const user = auth.currentUser;
         const actor = user ? { uid: user.uid, email: user.email } : null;
-          try { await logHistory({ action: 'update', collection: 'services', docId: id, before, after: { name: data.name, price: Number(data.price) || 0, duration: localDurationMinutes ? `${localDurationMinutes}m` : (data.duration || ''), durationMinutes: Number(localDurationMinutes) || 0, type: data.type } }); } catch (e) { console.warn('history logger failed', e); }
+          try { await logHistory({ action: 'update', collection: 'services', docId: id, before, after: { name: cleanName, price: Number(data.price) || 0, duration: localDurationMinutes ? `${localDurationMinutes}m` : (data.duration || ''), durationMinutes: Number(localDurationMinutes) || 0, type: data.type } }); } catch (e) { console.warn('history logger failed', e); }
       } catch (hx) { console.warn('Failed to write history for service update', hx); }
       onClose();
     } catch (err) {
@@ -85,7 +90,7 @@ const EditServiceModal = ({ open, id, onClose }) => {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
               <div style={{ gridColumn: '1 / 2' }}>
                 <label style={{ display: 'block', fontSize: 12, marginBottom: 6 }}>Name</label>
-                <input required value={data.name || ''} onChange={e => onChange('name', sanitizeName(e.target.value))} style={{ width: '80%', padding: 8, background: 'var(--surface)', border: '1px solid var(--border-main)', color: 'var(--text-primary)' }} />
+                <input required value={data.name || ''} onChange={e => onChange('name', e.target.value)} style={{ width: '80%', padding: 8, background: 'var(--surface)', border: '1px solid var(--border-main)', color: 'var(--text-primary)' }} />
               </div>
               <div style={{ gridColumn: '2 / 3' }}>
                 <label style={{ display: 'block', fontSize: 12, marginBottom: 6 }}>Type</label>
@@ -129,6 +134,8 @@ const EditServiceModal = ({ open, id, onClose }) => {
                     ) : (
                       <div style={{ color: '#666', marginBottom: 8 }}>No products added yet. Use the search below to add.</div>
                     )}
+
+                    {/* tags removed */}
 
                     <div style={{ marginTop: 8 }}>
                       <div style={{ display: 'flex', gap: 8, marginBottom: 8, alignItems: 'center' }}>

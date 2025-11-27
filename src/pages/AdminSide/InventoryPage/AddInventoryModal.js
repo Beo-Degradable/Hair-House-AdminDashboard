@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { collection, addDoc, serverTimestamp, doc, updateDoc, getDoc } from 'firebase/firestore';
 import { db } from '../../../firebase';
 import ValidatedInput from '../../../components/ValidatedInput';
-import { validateForm } from '../../../utils/validators';
+import { validateForm, sanitizeName } from '../../../utils/validators';
 
 const AddInventoryModal = ({ open, onClose, onAdded, products = [], branches = [] }) => {
   const branchMap = [
@@ -37,7 +37,9 @@ const AddInventoryModal = ({ open, onClose, onAdded, products = [], branches = [
     setLoading(true);
     try {
   // Require product name
-      const nameInput = name && String(name).trim();
+      const nameInput = sanitizeName(name || '');
+      const brandInput = sanitizeName(brand || '') || null;
+      const categoryInput = sanitizeName(category || '') || null;
       if (!nameInput) throw new Error('Enter product name');
       // build list of writes for branches with quantities
       const createdIds = [];
@@ -45,10 +47,10 @@ const AddInventoryModal = ({ open, onClose, onAdded, products = [], branches = [
         const raw = branchQuantities[b.id];
         const qty = Number(raw || 0);
         if (!isNaN(qty) && qty > 0) {
-          const data = {
+            const data = {
             productName: nameInput || null,
-            brand: brand || null,
-            category: category || null,
+            brand: brandInput,
+            category: categoryInput,
             unit: unit || null,
             cost: cost ? Number(cost) : null,
             price: price ? Number(price) : null,
@@ -136,15 +138,21 @@ const AddInventoryModal = ({ open, onClose, onAdded, products = [], branches = [
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
             <div>
               <label style={{ display: 'block', fontSize: 12 }}>Name</label>
-              <ValidatedInput value={name} onChange={v => setName(sanitizeName(v))} style={{ width: '80%', padding: 8, background: 'var(--surface)', border: '1px solid var(--border-main)', color: 'var(--text-primary)' }} />
+              <ValidatedInput value={name} onChange={v => setName(v)} style={{ width: '80%', padding: 8, background: 'var(--surface)', border: '1px solid var(--border-main)', color: 'var(--text-primary)' }} />
             </div>
             <div>
               <label style={{ display: 'block', fontSize: 12 }}>Brand</label>
-              <ValidatedInput value={brand} onChange={v => setBrand(sanitizeName(v))} style={{ width: '80%', padding: 8, background: 'var(--surface)', border: '1px solid var(--border-main)', color: 'var(--text-primary)' }} />
+              <ValidatedInput value={brand} onChange={v => setBrand(v)} style={{ width: '80%', padding: 8, background: 'var(--surface)', border: '1px solid var(--border-main)', color: 'var(--text-primary)' }} />
             </div>
             <div>
               <label style={{ display: 'block', fontSize: 12 }}>Category</label>
-              <ValidatedInput value={category} onChange={v => setCategory(sanitizeName(v))} style={{ width: '80%', padding: 8, background: 'var(--surface)', border: '1px solid var(--border-main)', color: 'var(--text-primary)' }} />
+              <select value={category} onChange={e => setCategory(e.target.value)} style={{ width: '80%', padding: 8, background: 'var(--surface)', border: '1px solid var(--border-main)', color: 'var(--text-primary)' }}>
+                <option value=''>-- select category --</option>
+                <option value='shampoo'>Shampoo</option>
+                <option value='conditioner'>Conditioner</option>
+                <option value='treatment'>Treatment</option>
+                <option value='color'>Color</option>
+              </select>
             </div>
             <div>
               <label style={{ display: 'block', fontSize: 12 }}>Unit</label>

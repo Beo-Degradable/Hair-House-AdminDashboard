@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { validateForm } from '../../../utils/validators';
+import { validateForm, sanitizeName } from '../../../utils/validators';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../../firebase';
 
@@ -17,8 +17,9 @@ const InventoryModal = ({ open, onClose, onAdded }) => {
     if (!v.ok) { alert(v.message || 'Invalid input'); return; }
     setLoading(true);
     try {
+      const nameInput = sanitizeName(name || '') || 'Untitled';
       const ref = await addDoc(collection(db, 'products'), {
-        name: name || 'Untitled',
+        name: nameInput,
         sku: sku || null,
         totalQty: Number(qty || 0),
         createdAt: serverTimestamp()
@@ -39,7 +40,7 @@ const InventoryModal = ({ open, onClose, onAdded }) => {
         <h3 style={{ marginTop: 0 }}>Add Product</h3>
         <div style={{ marginBottom: 8 }}>
           <label style={{ display: 'block', fontSize: 12 }}>Name</label>
-          <input value={name} onChange={e => setName(sanitizeName(e.target.value))} style={{ width: '100%', padding: 8 }} />
+          <input value={name} onChange={e => setName(e.target.value)} style={{ width: '100%', padding: 8 }} />
         </div>
         <div style={{ marginBottom: 8 }}>
           <label style={{ display: 'block', fontSize: 12 }}>SKU</label>

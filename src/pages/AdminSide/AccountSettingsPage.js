@@ -30,6 +30,15 @@ export default function AccountSettingsPage() {
   const [status, setStatus] = useState('');
   const [loading, setLoading] = useState(false);
   const [linking, setLinking] = useState(false);
+  const [snack, setSnack] = useState({ open: false, message: '', type: 'info' });
+  const showSnack = (message, type = 'info', timeout = 4000) => {
+    try {
+      setSnack({ open: true, message, type });
+      setTimeout(() => setSnack({ open: false, message: '', type }), timeout);
+    } catch (e) {
+      // noop
+    }
+  };
 
   const nameFromEmail = (em) => {
     if (!em) return '';
@@ -188,9 +197,11 @@ export default function AccountSettingsPage() {
                 if (!email) { setStatus('No email available for account'); return; }
                 await sendPasswordResetEmail(auth, email);
                 setStatus('Password reset email sent to ' + email);
+                showSnack('Password reset email sent to ' + email, 'success');
               } catch (e) {
                 console.error('sendPasswordResetEmail failed', e);
                 setStatus(e?.message || 'Failed to send reset email');
+                showSnack(e?.message || 'Failed to send reset email', 'error');
               }
             }}
           >
@@ -282,7 +293,7 @@ export default function AccountSettingsPage() {
                   style={{ ...styles.btn, ...styles.btnSecondary, width: isNarrow ? '100%' : 'auto' }}
                   onClick={async () => {
                     setStatus('');
-                    try { await sendPasswordResetEmail(auth, email); setStatus('Reset email sent'); } catch (e) { setStatus(e?.message || 'Failed to send reset email'); }
+                    try { await sendPasswordResetEmail(auth, email); setStatus('Reset email sent'); showSnack('Password reset email sent to ' + email, 'success'); } catch (e) { setStatus(e?.message || 'Failed to send reset email'); showSnack(e?.message || 'Failed to send reset email', 'error'); }
                   }}
                 >
                   Forgot password? Email reset link
@@ -294,6 +305,14 @@ export default function AccountSettingsPage() {
           </>
         )}
       </div>
+      {/* Snackbar */}
+      {snack.open && (
+        <div style={{ position: 'fixed', left: '50%', bottom: 24, transform: 'translateX(-50%)', zIndex: 20000 }}>
+          <div style={{ minWidth: 240, maxWidth: '90vw', background: snack.type === 'error' ? '#b91c1c' : (snack.type === 'success' ? '#166534' : '#333'), color: '#fff', padding: '10px 16px', borderRadius: 8, boxShadow: '0 6px 24px rgba(0,0,0,0.4)', textAlign: 'center' }}>
+            {snack.message}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
