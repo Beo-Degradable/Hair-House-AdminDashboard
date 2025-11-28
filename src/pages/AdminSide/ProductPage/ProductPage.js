@@ -1,5 +1,6 @@
 // Product listing: realtime table with simple search.
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { useLocation } from 'react-router-dom';
 import { collection, onSnapshot } from 'firebase/firestore';
 import { db } from '../../../firebase';
 import { sanitizeForSearch } from '../../../utils/validators';
@@ -55,6 +56,9 @@ const ProductPage = ({
   const [query, setQuery] = useState('');
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [highlightedId, setHighlightedId] = useState(null);
+  const rowRefs = useRef(new Map());
+  const location = useLocation();
 
   useEffect(() => {
     const col = collection(db, collectionName);
@@ -68,6 +72,31 @@ const ProductPage = ({
     });
     return () => unsub();
   }, [collectionName]);
+
+  // When route has ?id=..., highlight and scroll to that product
+  useEffect(() => {
+    if (!products || products.length === 0) return;
+    try {
+      const params = new URLSearchParams(location.search || '');
+      const id = params.get('id');
+      if (!id) return;
+      const exists = products.find(p => p.id === id);
+      if (!exists) return;
+      setHighlightedId(id);
+      // scroll into view (find the row element)
+      const el = rowRefs.current.get(id);
+      if (el && typeof el.scrollIntoView === 'function') {
+        setTimeout(() => {
+          try { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) { el.scrollIntoView(); }
+        }, 60);
+      }
+      // remove highlight after a few seconds
+      const clearTimeoutId = setTimeout(() => setHighlightedId(null), 6000);
+      return () => clearTimeout(clearTimeoutId);
+    } catch (e) {
+      // ignore
+    }
+  }, [location.search, products]);
 
   const filtered = products.filter(p => (p.name || '').toLowerCase().includes(query.toLowerCase()));
 
@@ -109,14 +138,17 @@ const ProductPage = ({
               </thead>
               <tbody>
                 {filtered.map(p => (
-                  <tr key={p.id}>
+                  <tr
+                    key={p.id}
+                    ref={(el) => { if (el) rowRefs.current.set(p.id, el); }}
+                    style={highlightedId === p.id ? { background: 'rgba(202,169,10,0.12)', boxShadow: 'inset 4px 0 0 0 rgba(202,169,10,0.9)' } : {}}
+                  >
                     <td>{p.name}</td>
                     <td>{p.brand || p.manufacturer || '-'}</td>
                     <td>{p.category || p.type || '-'}</td>
                     <td>{p.unit || p.uom || '-'}</td>
                     <td>{typeof p.price === 'number' ? `₱${p.price.toFixed(2)}` : (p.price ? `₱${Number(p.price).toFixed(2)}` : '₱0.00')}</td>
                     <td>{p.quantity ?? p.qty ?? 0}</td>
-                    
                   </tr>
                 ))}
               </tbody>

@@ -1,5 +1,6 @@
 // Services list: filter by type/search, CRUD via modals, simple table layout.
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { useLocation } from 'react-router-dom';
 import { collection, onSnapshot, deleteDoc, doc } from 'firebase/firestore';
 import { sanitizeForSearch } from '../../../utils/validators';
 import { db } from '../../../firebase';
@@ -34,6 +35,9 @@ const ServicePage = () => {
   const [editingId, setEditingId] = useState(null);
   const [selectedType, setSelectedType] = useState('');
   const isDesktop = useMediaQuery('(min-width: 900px)');
+  const [highlightedId, setHighlightedId] = useState(null);
+  const rowRefs = useRef(new Map());
+  const location = useLocation();
 
   useEffect(() => {
     const col = collection(db, 'services');
@@ -47,6 +51,27 @@ const ServicePage = () => {
     });
     return () => unsub();
   }, []);
+
+  // Highlight and scroll when ?id= is present
+  useEffect(() => {
+    if (!services || services.length === 0) return;
+    try {
+      const params = new URLSearchParams(location.search || '');
+      const id = params.get('id');
+      if (!id) return;
+      const exists = services.find(s => s.id === id);
+      if (!exists) return;
+      setHighlightedId(id);
+      const el = rowRefs.current.get(id);
+      if (el && typeof el.scrollIntoView === 'function') {
+        setTimeout(() => {
+          try { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) { el.scrollIntoView(); }
+        }, 60);
+      }
+      const clearId = setTimeout(() => setHighlightedId(null), 6000);
+      return () => clearTimeout(clearId);
+    } catch (e) {}
+  }, [location.search, services]);
 
   const filtered = services.filter(s => {
     const matchesQuery = (s.name || '').toLowerCase().includes(query.toLowerCase());
@@ -129,7 +154,7 @@ const ServicePage = () => {
           </thead>
           <tbody>
             {filtered.map(s => (
-              <tr key={s.id} style={{ borderBottom: '1px solid var(--border-main)' }}>
+              <tr key={s.id} ref={(el) => { if (el) rowRefs.current.set(s.id, el); }} style={{ borderBottom: '1px solid var(--border-main)', ...(highlightedId === s.id ? { background: 'rgba(202,169,10,0.08)', boxShadow: 'inset 4px 0 0 0 rgba(202,169,10,0.9)' } : {}) }}>
                 <td style={{ padding: '12px 16px' }}>{s.name}</td>
                 <td style={{ padding: '12px 16px' }}>{formatDuration(s)}</td>
                 <td style={{ padding: '12px 16px' }}>{formatPeso(s.price)}</td>

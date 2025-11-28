@@ -28,7 +28,7 @@ const Logo = () => {
 		<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%' }}>
 			<div style={{ width: 120, height: 120, borderRadius: 12, background: 'var(--bg-drawer)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--border-main)' }}>
 				<svg width="72" height="72" viewBox="0 0 24 24" fill="none">
-					<path d="M12 2 L15 8 L22 9 L17 14 L18 21 L12 18 L6 21 L7 14 L2 9 L9 8 Z" fill="#FFD700" />
+					<path d="M12 2 L15 8 L22 9 L17 14 L18 21 L12 18 L6 21 L7 14 L2 9 L9 8 Z" fill="#e6d49a" />
 				</svg>
 			</div>
 		</div>
@@ -150,14 +150,22 @@ const AdminLogin = ({ onLogin }) => {
 
 
 					return (
-						<div className="admin-login-bg">
-							<RippleBackground />
+						<div
+							className="admin-login-bg"
+							style={{
+								backgroundImage: `url(${process.env.PUBLIC_URL}/hxhbg.jpg)`,
+								backgroundPosition: 'center center',
+								backgroundSize: 'cover',
+								backgroundRepeat: 'no-repeat',
+							}}
+						>
 							<div className="admin-login-center-wrapper">
-								<div className="admin-login-header-outer">
-									<Logo />
-									<h2 className="admin-login-title">Welcome to Hair House Dashboard</h2>
-								</div>
 								<div className="admin-login-container">
+									{/* Logo and greeting moved inside the container per UI request */}
+									<div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, marginBottom: '0.8rem' }}>
+										<Logo />
+										<h2 className="admin-login-title">Welcome to Hair House Dashboard</h2>
+									</div>
 									<form className="admin-login-form" onSubmit={handleSubmit} autoComplete="off">
 										<div className="admin-login-desc">Please log in your credentials</div>
 										<input
@@ -189,11 +197,11 @@ const AdminLogin = ({ onLogin }) => {
 												aria-label="Toggle password visibility"
 											>
 												<svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-													<ellipse cx="12" cy="12" rx="8" ry="5" stroke="#FFD700" strokeWidth="2" />
+													<ellipse cx="12" cy="12" rx="8" ry="5" stroke="#e6d49a" strokeWidth="2" />
 													{showPassword ? (
-														<circle cx="12" cy="12" r="2" fill="#FFD700" />
+														<circle cx="12" cy="12" r="2" fill="#e6d49a" />
 													) : (
-														<rect x="10" y="10" width="4" height="4" fill="#FFD700" />
+														<rect x="10" y="10" width="4" height="4" fill="#e6d49a" />
 													)}
 												</svg>
 											</span>

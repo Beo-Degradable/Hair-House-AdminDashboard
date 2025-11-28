@@ -6,7 +6,7 @@
 	justify-content: center;
 	width: 100%;
 	position: relative;
-	z-index: 2;
+	z-index: 3;
 	min-height: 100vh; /* ensures vertical centering */
 	box-sizing: border-box;
 	padding: clamp(1rem, 3vw, 2rem);
@@ -20,7 +20,8 @@ body, html, #root {
 /* Ripple background */
 .admin-login-bg {
 	min-height: 100vh;
-	background: #111;
+	/* background image is applied at runtime from the component to avoid webpack resolving public assets during CSS processing */
+	background-color: #111; /* fallback color while image loads */
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -28,10 +29,21 @@ body, html, #root {
 	overflow: hidden;
 }
 
+/* overlay blur layer above the background image to improve readability */
+.admin-login-bg::before {
+	content: '';
+	position: absolute;
+	inset: 0;
+	background: rgba(0,0,0,0.35);
+	backdrop-filter: blur(6px);
+	-webkit-backdrop-filter: blur(6px);
+	z-index: 1;
+}
+
 .ripple-bg {
 	position: absolute;
 	top: 0; left: 0; right: 0; bottom: 0;
-	z-index: 1;
+	z-index: 0;
 	pointer-events: none;
 }
 
@@ -45,49 +57,49 @@ body, html, #root {
 /* Each ripple gets a unique animation and position set */
 .ripple-0 {
 	width: 340px; height: 340px;
-	background: radial-gradient(circle, #bfa14a 60%, #fffbe6 100%);
+	background: radial-gradient(circle, #c9b86a 60%, #fbf6e8 100%);
 	animation-delay: 0s;
 	--start-x: 10vw; --start-y: 18vh;
 	--end-x: 60vw; --end-y: 10vh;
 }
 .ripple-1 {
 	width: 220px; height: 220px;
-	background: radial-gradient(circle, #fffbe6 60%, #bfa14a 100%);
+	background: radial-gradient(circle, #fbf6e8 60%, #c9b86a 100%);
 	animation-delay: 1.2s;
 	--start-x: 60vw; --start-y: 10vh;
 	--end-x: 30vw; --end-y: 60vh;
 }
 .ripple-2 {
 	width: 180px; height: 180px;
-	background: radial-gradient(circle, #bfa14a 60%, #fffbe6 100%);
+	background: radial-gradient(circle, #c9b86a 60%, #fbf6e8 100%);
 	animation-delay: 2.4s;
 	--start-x: 30vw; --start-y: 60vh;
 	--end-x: 70vw; --end-y: 60vh;
 }
 .ripple-3 {
 	width: 260px; height: 260px;
-	background: radial-gradient(circle, #fffbe6 60%, #bfa14a 100%);
+	background: radial-gradient(circle, #fbf6e8 60%, #c9b86a 100%);
 	animation-delay: 3.6s;
 	--start-x: 70vw; --start-y: 60vh;
 	--end-x: 80vw; --end-y: 30vh;
 }
 .ripple-4 {
 	width: 120px; height: 120px;
-	background: radial-gradient(circle, #bfa14a 60%, #fffbe6 100%);
+	background: radial-gradient(circle, #c9b86a 60%, #fbf6e8 100%);
 	animation-delay: 4.8s;
 	--start-x: 80vw; --start-y: 30vh;
 	--end-x: 15vw; --end-y: 75vh;
 }
 .ripple-5 {
 	width: 150px; height: 150px;
-	background: radial-gradient(circle, #fffbe6 60%, #bfa14a 100%);
+	background: radial-gradient(circle, #fbf6e8 60%, #c9b86a 100%);
 	animation-delay: 6s;
 	--start-x: 15vw; --start-y: 75vh;
 	--end-x: 50vw; --end-y: 40vh;
 }
 .ripple-6 {
 	width: 100px; height: 100px;
-	background: radial-gradient(circle, #bfa14a 60%, #fffbe6 100%);
+	background: radial-gradient(circle, #c9b86a 60%, #fbf6e8 100%);
 	animation-delay: 7.2s;
 	--start-x: 50vw; --start-y: 40vh;
 	--end-x: 10vw; --end-y: 18vh;
@@ -127,10 +139,10 @@ body, html, #root {
 }
 
 .admin-login-container {
-	background: #232323;
+	background: rgba(35,35,35,0.8);
 	border-radius: 16px;
 	box-shadow: 0 8px 32px 0 rgba(0,0,0,0.4);
-	border: 3px solid #bfa14a;
+	border: 3px solid rgba(201,184,106,0.75);
 	padding: clamp(1.5rem, 3vw, 2.5rem);
 	width: min(480px, 94vw);
 	color: #fff;
@@ -138,23 +150,26 @@ body, html, #root {
 	flex-direction: column;
 	align-items: center;
 	position: relative;
-	z-index: 2;
+	z-index: 3;
 	box-sizing: border-box;
+	font-family: sans-serif;
+	font-size: 14px;
+	font-weight: 400;
 }
 
 .logo-placeholder {
 	width: clamp(56px, 12vw, 80px);
 	height: clamp(56px, 12vw, 80px);
-	background: linear-gradient(135deg, #bfa14a 60%, #fff 100%);
+	background: linear-gradient(135deg, rgba(201,184,106,0.9) 60%, #fff 100%);
 	border-radius: 50%;
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	font-size: clamp(1rem, 1.5vw, 1.5rem);
+	font-size: 14px;
 	color: #232323;
-	font-weight: bold;
+	font-weight: 400;
 	margin-bottom: 1rem;
-	box-shadow: 0 0 16px 2px #bfa14a44;
+	box-shadow: 0 0 16px 2px #c9b86a44;
 }
 
 
@@ -165,22 +180,23 @@ body, html, #root {
 	align-items: center;
 	margin-bottom: 2.2rem;
 	margin-top: 2.5vh;
-	z-index: 2;
+	z-index: 3;
 	position: relative;
 }
 
 .admin-login-title {
-	color: #FFD700;
-	font-size: clamp(1.1rem, 2.5vw, 1.5rem);
+	color: #e6d49a;
+	font-size: 14px;
 	margin-bottom: 0.5rem;
-	font-family: 'Montserrat', sans-serif;
-	letter-spacing: 1px;
+	font-family: sans-serif;
+	letter-spacing: 0.5px;
+	font-weight: 400;
 	text-align: center;
 }
 
 .admin-login-desc {
 	color: #fff;
-	font-size: 1rem;
+	font-size: 14px;
 	margin-bottom: 1.2rem;
 	text-align: center;
 }
@@ -193,18 +209,19 @@ body, html, #root {
 }
 
 .admin-login-input {
-	background: #181818;
-	border: 1.5px solid #bfa14a;
+	background: rgba(24,24,24,0.85);
+	border: 1.5px solid rgba(201,184,106,0.9);
 	border-radius: 8px;
 	color: #fff;
 	padding: 0.9rem 1rem;
-	font-size: clamp(0.95rem, 1rem + 0.2vw, 1.05rem);
+	font-size: 14px;
+	font-weight: 400;
 	outline: none;
 	transition: border 0.2s;
 	box-sizing: border-box;
 }
 .admin-login-input:focus {
-	border: 1.5px solid #FFD700;
+	border: 1.5px solid #e6d49a;
 }
 
 .admin-login-password-wrapper {
@@ -225,40 +242,41 @@ body, html, #root {
 	transform: translateY(-50%);
 	cursor: pointer;
 	transition: filter 0.2s;
-	filter: brightness(0.8);
+	filter: brightness(0.85);
 }
 .eye-icon.open {
-	filter: brightness(1.2) drop-shadow(0 0 4px #FFD700);
+	filter: brightness(1.05) drop-shadow(0 0 4px #e6d49a);
 }
 
 .admin-login-btn {
-	background: linear-gradient(90deg, #bfa14a 60%, #FFD700 100%);
+	background: linear-gradient(90deg, rgba(201,184,106,0.95) 60%, rgba(230,212,154,0.95) 100%);
 	color: #232323;
 	border: none;
 	border-radius: 8px;
 	padding: 0.85rem 0;
-	font-size: clamp(1rem, 1rem + 0.5vw, 1.15rem);
-	font-weight: bold;
+	font-size: 14px;
+	font-weight: 400;
 	cursor: pointer;
 	margin-top: 0.5rem;
-	box-shadow: 0 2px 8px 0 #bfa14a33;
+	box-shadow: 0 2px 8px 0 #c9b86a33;
 	transition: background 0.2s, color 0.2s;
 	width: 100%;
 	min-height: 44px;
 }
 .admin-login-btn:hover {
-	background: linear-gradient(90deg, #FFD700 60%, #bfa14a 100%);
+	background: linear-gradient(90deg, rgba(230,212,154,0.95) 60%, rgba(201,184,106,0.95) 100%);
 	color: #111;
 }
 
 .admin-login-error {
-	color: #FFD700;
-	background: #232323;
-	border: 1px solid #FFD700;
+	color: #e6d49a;
+	background: rgba(35,35,35,0.9);
+	border: 1px solid rgba(230,212,154,0.9);
 	border-radius: 6px;
 	padding: 0.5rem 1rem;
 	margin-bottom: 0.5rem;
-	font-size: 0.95rem;
+	font-size: 14px;
+	font-weight: 400;
 	text-align: center;
 }
 
@@ -273,11 +291,11 @@ body, html, #root {
 	position: absolute;
 	width: 6px;
 	height: 6px;
-	background: #FFD700;
+	background: #e6d49a;
 	border-radius: 50%;
-	opacity: 0.7;
+	opacity: 0.65;
 	animation: blink 2s infinite;
-	box-shadow: 0 0 8px 2px #FFD70088;
+	box-shadow: 0 0 8px 2px #e6d49a88;
 }
 /* Randomize star positions and animation delays */
 /* You can add more .star-N rules for more stars */

@@ -6,7 +6,8 @@ import React, { useState, useEffect, useRef, useContext } from "react";
 import { AuthContext } from "../../context/AuthContext";
 import { auth, db } from "../../firebase";
 import { useNavigate, useLocation } from "react-router-dom";
-import { collection, query as q, orderBy, limit, onSnapshot, doc as docRef, getDoc } from 'firebase/firestore';
+import { collection, query as q, orderBy, limit, onSnapshot, doc as docRef, getDoc, where, startAt, endAt, getDocs } from 'firebase/firestore';
+import AdminDrawer from '../../components/AdminDrawer';
 
 // Standard admin navigation buttons (used by the topbar). The drawer
 // rendering below intentionally omits printing these entries so the
@@ -49,6 +50,47 @@ const TopBar = ({ onLogout, darkMode, setDarkMode, settingsOpen, setSettingsOpen
   const moreMenuRef = useRef(null);
   const [paymentProfile, setPaymentProfile] = useState(null);
 
+  // Notification indicator (simple state for now; can be wired to Firestore)
+  const [hasNewNotifications, setHasNewNotifications] = useState(false);
+  // Quick search state
+  const [searchTerm, setSearchTerm] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [showSearch, setShowSearch] = useState(false);
+  const searchRef = useRef(null);
+  const [searchSelected, setSearchSelected] = useState(-1);
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const searchCache = useRef(new Map());
+
+  const HISTORY_KEY = 'hh_search_history_v1';
+
+  const loadHistory = () => {
+    try {
+      const raw = localStorage.getItem(HISTORY_KEY);
+      if (!raw) return [];
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) return [];
+      return parsed;
+    } catch (e) { return []; }
+  };
+
+  const saveToHistory = (item) => {
+    try {
+      if (!item || !item.label) return;
+      const raw = localStorage.getItem(HISTORY_KEY);
+      let arr = [];
+      if (raw) {
+        arr = JSON.parse(raw) || [];
+      }
+      // dedupe by type+id or label
+      const key = `${item.type || 'q'}:${item.id || item.label}`;
+      arr = arr.filter(x => `${x.type || 'q'}:${x.id || x.label}` !== key);
+      arr.unshift(item);
+      arr = arr.slice(0, 8);
+      localStorage.setItem(HISTORY_KEY, JSON.stringify(arr));
+    } catch (e) {}
+  };
+
   // Responsive nav breakpoint detection
 const [isWide, setIsWide] = useState(() => {
   if (typeof window === 'undefined') return true;
@@ -90,11 +132,11 @@ useEffect(() => {
     if (!name) return '';
     const trimmed = name.trim();
     if (trimmed.length <= max) return trimmed;
+    if (trimmed.length <= max) return trimmed;
     const parts = trimmed.split(/\s+/);
     if (parts.length > 1) {
       const first = parts[0];
       const lastInitial = parts[parts.length - 1][0] || '';
-      // prefer 'First L...' style when truncating multi-part names
       const candidate = `${first} ${lastInitial}...`;
       return candidate.length <= max ? candidate : `${first.slice(0, Math.max(3, max - 5))}...`;
     }
@@ -108,63 +150,36 @@ useEffect(() => {
     return `${local.slice(0, max).trim()}...`;
   }
 
-  // Compute drawer width (fixed on wide screens, dynamic on small)
-  const computedDrawerWidth = isWide
-    ? `${drawerWidth}px`
-    : `${Math.min(360, Math.max(220, Math.floor(viewportWidth * 0.86)))}px`;
-
-  const [hasNewNotifications, setHasNewNotifications] = useState(false);
-  const [latestNotifTs, setLatestNotifTs] = useState(null);
-
-  useEffect(() => {
-    try {
-      const histCol = collection(db, 'history');
-      const histQ = q(histCol, orderBy('timestamp', 'desc'), limit(1));
-      const unsub = onSnapshot(histQ, (snap) => {
-        if (snap.empty) {
-          setLatestNotifTs(null);
-          setHasNewNotifications(false);
-          return;
-        }
-        const doc = snap.docs[0];
-        const data = doc.data();
-        const ts = data?.timestamp ? (data.timestamp.toMillis ? data.timestamp.toMillis() : (new Date(data.timestamp)).getTime()) : null;
-        setLatestNotifTs(ts);
-        const lastSeen = parseInt(localStorage.getItem('lastSeenNotifications') || '0', 10) || 0;
-        if (!ts) {
-          setHasNewNotifications(false);
-        } else {
-          setHasNewNotifications(ts > lastSeen);
-        }
-      }, (err) => {
-        // ignore for UI indicator
-        console.warn('history indicator error', err);
-      });
-      return () => unsub();
-    } catch (e) {
-      console.warn('failed to subscribe history indicator', e);
+  // Compact display helpers: prefer short "First L." and truncated local-part emails
+  function compactNameForUI(name) {
+    if (!name) return '';
+    const trimmed = name.trim();
+    const parts = trimmed.split(/\s+/);
+    if (parts.length === 1) {
+      return trimmed.length <= 12 ? trimmed : `${trimmed.slice(0, 9)}...`;
     }
-  }, []);
+    const first = parts[0];
+    const last = parts[parts.length - 1] || '';
+    const lastInitial = last ? `${last[0]}.` : '';
+    const candidate = `${first} ${lastInitial}`;
+    if (candidate.length <= 14) return candidate;
+    // fallback to first name truncated
+    return `${first.slice(0, Math.max(3, 11))}...`;
+  }
 
-  // Mark notifications seen when visiting /notifications
-  useEffect(() => {
-    if (location?.pathname === '/notifications') {
-      try {
-        if (latestNotifTs) {
-          localStorage.setItem('lastSeenNotifications', String(latestNotifTs));
-        } else {
-          // mark current time
-          localStorage.setItem('lastSeenNotifications', String(Date.now()));
-        }
-      } catch (e) {}
-      setHasNewNotifications(false);
+  function compactEmailForUI(email) {
+    if (!email) return '';
+    const parts = email.split('@');
+    const local = parts[0] || '';
+    const domain = parts[1] || '';
+    if (!domain) {
+      return local.length <= 12 ? local : `${local.slice(0, 9)}...`;
     }
-  }, [location && location.pathname, latestNotifTs]);
+    if (local.length <= 8) return `${local}@${domain}`;
+    return `${local.slice(0, 8)}...@${domain}`;
+  }
 
-  const nameToDisplay = shortenName(fullName, 12);
-  const emailToDisplay = shortenEmail(fullEmail, 14);
-
-  // Resolve avatar URL; MD5 email hash for gravatar fallback
+  // md5Hex: compute MD5 hex digest (SubtleCrypto first, JS fallback)
   const md5Hex = async (str) => {
     if (!str) return '';
     // try SubtleCrypto first (modern browsers)
@@ -175,10 +190,11 @@ useEffect(() => {
         const hashArray = Array.from(new Uint8Array(hashBuffer));
         return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
       } catch (e) {
-        // fall through to small JS implementation below
+        // fall through to JS fallback
       }
     }
-  // Fallback MD5 implementation (minimal) when SubtleCrypto unavailable
+
+    // Fallback MD5 implementation (minimal) when SubtleCrypto unavailable
     function cmn(q, a, b, x, s, t) { a = (a + q + x + t) & 0xffffffff; return ((a << s) | (a >>> (32 - s))) + b; }
     function ff(a, b, c, d, x, s, t) { return cmn((b & c) | (~b & d), a, b, x, s, t); }
     function gg(a, b, c, d, x, s, t) { return cmn((b & d) | (c & ~d), a, b, x, s, t); }
@@ -313,18 +329,47 @@ useEffect(() => {
   // Track broken avatar to show initials
   const [avatarBroken, setAvatarBroken] = useState(false);
 
+  // Display-shorten helpers used in the topbar and drawer footer (compact by default)
+  const nameToDisplay = compactNameForUI(fullName) || shortenName(fullName, 20) || shorten(fullName, 12);
+  const emailToDisplay = compactEmailForUI(fullEmail) || shortenEmail(fullEmail, 14);
+
+  // Compute drawer width based on viewport (keeps a sensible min/max)
+  const computedDrawerWidth = Math.min(drawerWidth, Math.max(180, Math.floor(viewportWidth * 0.85)));
+
+  // Search expansion: expand the input when there are results to show
+  const searchExpanded = showSearch && Array.isArray(searchResults) && searchResults.length > 0;
+  // Fixed search bar width (does not change when results appear)
+  const searchBarWidth = Math.min(420, Math.max(240, Math.floor(viewportWidth * 0.28)));
+
   const getInitials = (name) => {
-    // Prefer initials from name; fallback to email local-part; default 'U'
+    // Return a single deterministic initial (first letter of first name).
+    // Fallback to email local-part first letter, or 'U'.
     if (!name || !name.trim()) {
       if (fullEmail) {
         const local = (fullEmail.split('@')[0] || '').trim();
-        return (local.slice(0, 2) || 'U').toUpperCase();
+        return (local.slice(0, 1) || 'U').toUpperCase();
       }
       return 'U';
     }
     const parts = name.trim().split(/\s+/);
-    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-    return (parts[0][0] + (parts[parts.length - 1][0] || '')).toUpperCase();
+    return (parts[0] && parts[0][0] ? parts[0][0].toUpperCase() : 'U');
+  };
+
+  // Safe navigation helper: try React Router `navigate`, fall back to `window.location`.
+  const safeNavigate = (path) => {
+    try {
+      if (typeof navigate === 'function') {
+        navigate(path);
+        return;
+      }
+    } catch (e) {
+      // fall back to window navigation below
+    }
+    try {
+      if (typeof window !== 'undefined' && window.location) window.location.href = path;
+    } catch (e) {
+      // give up silently
+    }
   };
 
   // Log avatar load failures (diagnostic)
@@ -371,6 +416,158 @@ useEffect(() => {
     window.addEventListener('mousedown', onDown);
     return () => window.removeEventListener('mousedown', onDown);
   }, [showMore]);
+
+  // Close search dropdown on outside click
+  useEffect(() => {
+    if (!showSearch) return;
+    const onDown = (e) => {
+      if (searchRef.current && !searchRef.current.contains(e.target)) {
+        setShowSearch(false);
+      }
+    };
+    window.addEventListener('mousedown', onDown);
+    return () => window.removeEventListener('mousedown', onDown);
+  }, [showSearch]);
+
+  // Debounced search effect with parallel fetch, caching, and faster response
+  useEffect(() => {
+    const term = searchTerm && searchTerm.trim();
+    // allow single-character searches (show results even for first letter)
+    if (!term || term.length < 1) {
+      setSearchResults([]);
+      setSearchLoading(false);
+      return;
+    }
+
+    let mounted = true;
+    const qTerm = term.toLowerCase();
+
+    // If cached, use immediately
+    const cached = searchCache.current.get(qTerm);
+    if (cached) {
+      setSearchResults(cached.slice(0, 8));
+      setSearchSelected(-1);
+      setSearchLoading(false);
+      setShowSearch(true);
+      return;
+    }
+
+    // show dropdown and spinner immediately to improve perceived speed
+    setShowSearch(true);
+    setSearchLoading(true);
+
+    // reduce per-collection fetch size for single-letter queries to keep reads light
+    const maxPerCollection = (qTerm.length === 1) ? 40 : 80; // smaller page to make reads faster
+    const collectionsToSearch = [
+      { name: 'products', type: 'product', fields: ['name', 'title'] },
+      { name: 'services', type: 'service', fields: ['name', 'title'] },
+      { name: 'users', type: 'user', fields: ['name', 'email'] }
+    ];
+
+    const delay = 140; // shorter debounce for snappier feel
+    const timeout = setTimeout(async () => {
+      try {
+        const results = [];
+        const seen = new Set();
+
+        // fetch in parallel
+        const fetches = collectionsToSearch.map(async (col) => {
+          try {
+            const ref = collection(db, col.name);
+            const snap = await getDocs(q(ref, limit(maxPerCollection)));
+            snap.forEach(d => {
+              if (seen.has(d.id)) return;
+              const data = d.data() || {};
+              let label = '';
+              for (const f of col.fields) {
+                if (data[f]) { label = data[f]; break; }
+              }
+              const lower = (label || '').toLowerCase();
+              if (lower.indexOf(qTerm) !== -1) {
+                seen.add(d.id);
+                results.push({ type: col.type, id: d.id, label: label || (col.type === 'user' ? (data.email || 'User') : (data.title || data.name || col.type)) });
+              }
+            });
+          } catch (e) {
+            // ignore single collection errors
+          }
+        });
+
+        await Promise.all(fetches);
+
+        if (!mounted) return;
+        // cache results for identical query to speed up repeat typing
+        searchCache.current.set(qTerm, results.slice(0, 12));
+        setSearchResults(results.slice(0, 8));
+        setSearchSelected(-1);
+      } catch (err) {
+        // ignore
+      } finally {
+        if (!mounted) return;
+        setSearchLoading(false);
+        setShowSearch(true);
+      }
+    }, delay);
+
+    return () => { mounted = false; clearTimeout(timeout); };
+  }, [searchTerm]);
+
+  // keyboard navigation for search
+  const onSearchKey = (e) => {
+    if (!showSearch) return;
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setSearchSelected(i => Math.min((searchResults.length - 1), (i + 1 < 0 ? 0 : i + 1)));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setSearchSelected(i => Math.max(0, (i - 1)));
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+        if (searchSelected >= 0 && searchSelected < searchResults.length) {
+        const r = searchResults[searchSelected];
+        setShowSearch(false);
+        setSearchTerm('');
+        saveToHistory(r);
+        if (r.type === 'product') safeNavigate(`/products?id=${encodeURIComponent(r.id)}`);
+        else if (r.type === 'service') safeNavigate(`/services?id=${encodeURIComponent(r.id)}`);
+        else if (r.type === 'user') safeNavigate(`/users?id=${encodeURIComponent(r.id)}`);
+      }
+      else if (searchTerm && searchTerm.trim().length) {
+        // fallback: if user pressed enter with free text, save the query as a generic entry
+        const qItem = { type: 'query', id: searchTerm.trim(), label: searchTerm.trim() };
+        saveToHistory(qItem);
+        setShowSearch(false);
+      }
+    } else if (e.key === 'Escape') {
+      setShowSearch(false);
+    } else if (e.key === 'Tab') {
+      // Tab fills the input with the currently selected suggestion (like Google)
+      if (searchSelected >= 0 && searchSelected < searchResults.length) {
+        e.preventDefault();
+        const r = searchResults[searchSelected];
+        setSearchTerm(r.label);
+        setShowSearch(false);
+        setSearchSelected(-1);
+        // keep focus on input; user can press Enter to navigate
+      }
+    }
+  };
+
+  const renderHighlighted = (label) => {
+    if (!searchTerm) return label;
+    const s = searchTerm.trim().toLowerCase();
+    const lower = (label || '').toLowerCase();
+    const idx = lower.indexOf(s);
+    if (idx === -1) return label;
+    const before = label.slice(0, idx);
+    const match = label.slice(idx, idx + s.length);
+    const after = label.slice(idx + s.length);
+    return (
+      <span>
+        {before}<span style={{ color: '#b794f4', fontWeight: 700 }}>{match}</span>{after}
+      </span>
+    );
+  };
 
   
 
@@ -468,179 +665,133 @@ useEffect(() => {
               <rect x="4" y="16" width="16" height="2" rx="1" fill="var(--icon-main)" />
             </svg>
           </button>
-          {/* Nav buttons moved to left, horizontally aligned */}
-          {/* left: compact nav (shown on narrow/non-Windows) */}
-          {!(isWindows || isWide) && (
-            <div className={`admin-topbar-nav${showNav ? ' show' : ''}`} style={{ display: "flex", alignItems: "center", gap: 10, marginLeft: 8, position: 'relative' }}>
-              {primaryNav.map(btn => {
-                const active = isActivePath(btn.path);
-                return (
-                  <button
-                    key={btn.label}
-                    onClick={() => { navigate(btn.path); setShowNav(false); setShowMore(false); }}
-                    style={{
-                        background: "none",
-                        border: "none",
-                        color: active ? activeLinkStyle.color : "var(--icon-main)",
-                        fontWeight: active ? activeLinkStyle.fontWeight : "var(--font-weight-main)",
-                        fontSize: 13,
-                        cursor: "pointer",
-                        padding: "4px 8px",
-                        borderRadius: 4,
-                        transition: "background 0.2s, color 0.2s",
-                        borderBottom: active ? activeLinkStyle.borderBottom : 'none',
-                        paddingBottom: active ? activeLinkStyle.paddingBottom : 0,
-                        textDecoration: 'none'
-                      }}
-                  >
-                    {btn.label}
-                  </button>
-                );
-              })}
-
-              {moreNav.length > 0 && (
-                <div style={{ position: 'relative' }}>
-                  <button
-                    ref={moreBtnRef}
-                    onClick={() => setShowMore((v) => !v)}
-                    aria-haspopup="true"
-                    aria-expanded={showMore}
-                    aria-controls="topbar-more-menu"
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      color: 'var(--icon-main)',
-                      cursor: 'pointer',
-                      padding: '4px 6px',
-                      borderRadius: 6,
-                    }}
-                    title="More"
-                  >
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                      <circle cx="5" cy="12" r="1.5" fill="var(--icon-main)" />
-                      <circle cx="12" cy="12" r="1.5" fill="var(--icon-main)" />
-                      <circle cx="19" cy="12" r="1.5" fill="var(--icon-main)" />
-                    </svg>
-                  </button>
-
-                  {showMore && (
-                    <div
-                      id="topbar-more-menu"
-                      ref={moreMenuRef}
-                      role="menu"
-                      style={{
-                        position: 'absolute',
-                        top: '40px',
-                        right: 0,
-                        background: 'var(--bg-drawer)',
-                        border: '1px solid var(--border-main)',
-                        borderRadius: 8,
-                        padding: 8,
-                        boxShadow: '0 6px 20px rgba(0,0,0,0.4)',
-                        zIndex: 1600,
-                        minWidth: 160,
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: 6,
-                      }}
-                    >
-                      {moreNav.map(btn => {
-                        const active = isActivePath(btn.path);
-                        return (
-                          <button
-                            key={btn.label}
-                            role="menuitem"
-                            onClick={() => { navigate(btn.path); setShowMore(false); setShowNav(false); }}
-                            style={{
-                              background: 'none',
-                              border: 'none',
-                              color: active ? activeLinkStyle.color : 'var(--icon-main)',
-                              fontWeight: active ? activeLinkStyle.fontWeight : 'normal',
-                              textAlign: 'left',
-                              padding: '6px 10px',
-                              borderRadius: 6,
-                              cursor: 'pointer'
-                            }}
-                          >
-                            {btn.label}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
+          {/* Topbar navigation removed per request: keep drawer toggle only for opening the sidebar. */}
         </div>
         {/* Right side: on Windows or wide screens show full nav here; otherwise leave it blank */}
-  <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginRight: 100 }}>
-          {(isWindows || isWide) ? (
-            <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-              {navButtons.map((btn) => {
-                const active = isActivePath(btn.path);
-                return (
-                  <div key={btn.label} style={{ display: 'flex', alignItems: 'center' }}>
-                    <button
-                      onClick={() => navigate(btn.path)}
-                      style={{
-                        background: 'none',
-                        border: 'none',
-                        color: active ? activeLinkStyle.color : 'var(--icon-main)',
-                        fontSize: 13,
-                        padding: '4px 8px',
-                        cursor: 'pointer',
-                        fontWeight: active ? activeLinkStyle.fontWeight : 'inherit',
-                        borderBottom: active ? activeLinkStyle.borderBottom : 'none',
-                        paddingBottom: active ? activeLinkStyle.paddingBottom : 0,
-                        textDecoration: 'none'
-                      }}
-                    >
-                      {btn.label}
-                    </button>
-                    {/* plain Users nav; dropdown removed */}
-                  </div>
-                );
-              })}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 6 }}>
-                <button onClick={() => { navigate('/notifications'); setDrawerOpen(false); }} title="Notifications" style={{ background: 'none', border: 'none', cursor: 'pointer', position: 'relative', padding: 6 }}>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden>
-                    <path d="M15 17h5l-1.405-1.405A2.032 2.032 0 0 1 18 14.158V11a6 6 0 0 0-5-5.917V4a1 1 0 1 0-2 0v1.083A6 6 0 0 0 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5" stroke="var(--icon-main)" strokeWidth="1.4" fill="none" />
-                  </svg>
-                  {hasNewNotifications && (
-                    <span style={{ position: 'absolute', right: 2, top: 2, width: 10, height: 10, borderRadius: 10, background: 'var(--danger, #d32f2f)', boxShadow: '0 0 0 2px rgba(0,0,0,0.06)' }} />
-                  )}
-                </button>
+  <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginRight: 16 }}>
+          {/* Topbar: keep only notifications and profile avatar */}
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginRight: 6 }}>
+            {/* Quick search: input nested inside a bordered container that expands downward and displays results inside it */}
+            <div ref={searchRef} style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                width: searchBarWidth,
+                transition: 'width 0.22s ease',
+                borderRadius: 8,
+                background: 'var(--bg-drawer)',
+                border: '1px solid var(--border-main)',
+                boxShadow: showSearch ? '0 6px 18px rgba(0,0,0,0.18)' : 'none',
+                padding: '4px 6px'
+              }}>
+                <input
+                  value={searchTerm}
+                  onChange={(e) => { const v = e.target.value; setSearchTerm(v); if (v && v.trim().length >= 1) { setShowSearch(true); setSearchLoading(true); } }}
+                  onFocus={() => { setIsSearchFocused(true); if (!searchTerm || !searchTerm.trim()) { const hist = loadHistory(); if (hist && hist.length) { setSearchResults(hist); setShowSearch(true); } } else if (searchResults.length) setShowSearch(true); }}
+                  onBlur={() => { setIsSearchFocused(false); /* dropdown closing handled by outside click effect */ }}
+                  onKeyDown={onSearchKey}
+                  placeholder="Search services, products, users"
+                  aria-label="Search"
+                  style={{ height: 24, padding: '4px 6px', borderRadius: 6, border: 'none', background: 'transparent', color: 'var(--text-main)', width: '100%', outline: 'none', fontSize: 13 }}
+                />
+              </div>
 
-                <button
-                  ref={profileBtnRef}
-                  onClick={(e) => { if (e.altKey || e.ctrlKey) { showAvatarDebug(); return; } navigate('/account-settings'); }}
-                  style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
-                  title={fullEmail || fullName || 'Account Settings'}
-                  aria-label={fullEmail || fullName || 'Account Settings'}
-                >
-                  {(!avatarBroken && avatarUrl) ? (
-                    <img
-                      src={avatarUrl}
-                      alt={fullName || 'Profile'}
-                      onError={(ev) => handleAvatarError(avatarUrl, ev)}
-                      style={{ width: 26, height: 26, borderRadius: 999, objectFit: 'cover', border: '1px solid var(--border-main)' }}
-                    />
-                  ) : (
-                    <div
-                      title={fullName || 'Profile'}
-                      aria-label={fullName || 'Profile'}
-                      style={{ width: 26, height: 26, borderRadius: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--border-main)', color: 'var(--text-main)', fontSize: 12, fontWeight: 700 }}
-                    >
-                      {getInitials(fullName)}
+              {/* Absolutely positioned results dropdown below the searchbar so the input remains visible */}
+              <div style={{
+                position: 'absolute',
+                top: '100%',
+                left: 0,
+                marginTop: 8,
+                width: searchBarWidth,
+                zIndex: 1402,
+                borderRadius: 8,
+                background: 'var(--bg-drawer)',
+                border: '1px solid #caa90a',
+                boxShadow: '0 10px 30px rgba(0,0,0,0.5)',
+                overflow: 'hidden',
+                maxHeight: (showSearch ? Math.min(320, 56 + (Array.isArray(searchResults) ? searchResults.length * 56 : 0)) : 0),
+                transition: 'max-height 0.18s ease, opacity 0.12s ease',
+                opacity: (showSearch ? 1 : 0),
+                overflowY: 'auto'
+              }}>
+                {showSearch && searchLoading && (
+                  <div style={{ padding: 10, color: 'var(--muted)' }}>Searching…</div>
+                )}
+
+                {showSearch && !searchLoading && searchResults.map((r, idx) => (
+                  <button type="button" key={`${r.type}-${r.id}-${idx}`} onMouseDown={(e) => { e.preventDefault(); }} onClick={() => {
+                    setShowSearch(false);
+                    setSearchTerm('');
+                    // Navigate to the collection list page and include the item id as a query param
+                    if (r.type === 'product') safeNavigate(`/products?id=${encodeURIComponent(r.id)}`);
+                    else if (r.type === 'service') safeNavigate(`/services?id=${encodeURIComponent(r.id)}`);
+                    else if (r.type === 'user') safeNavigate(`/users?id=${encodeURIComponent(r.id)}`);
+                  }} style={{ display: 'flex', gap: 8, alignItems: 'center', width: '100%', padding: '10px 12px', background: searchSelected === idx ? 'rgba(202,169,10,0.08)' : 'transparent', border: 'none', textAlign: 'left', color: 'var(--text-main)', cursor: 'pointer' }} onMouseEnter={() => setSearchSelected(idx)} onMouseLeave={() => setSearchSelected(-1)}>
+                    <div style={{ width: 8 }} />
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                      <div style={{ fontWeight: 700, color: '#ffd14d' }}>{renderHighlighted(r.label)}</div>
+                      <div style={{ fontSize: 12, color: 'var(--muted)' }}>{r.type}</div>
                     </div>
-                  )}
-                </button>
+                  </button>
+                ))}
+
+                {showSearch && !searchLoading && searchResults.length === 0 && (
+                  <div style={{ padding: 10, color: 'var(--muted)' }}>No results</div>
+                )}
               </div>
             </div>
-          ) : (
-            <div style={{ width: 8 }} />
-          )}
+            <button onClick={() => { safeNavigate('/notifications'); setDrawerOpen(false); }} title="Notifications" style={{ background: 'none', border: 'none', cursor: 'pointer', position: 'relative', padding: 6 }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden>
+                <path d="M15 17h5l-1.405-1.405A2.032 2.032 0 0 1 18 14.158V11a6 6 0 0 0-5-5.917V4a1 1 0 1 0-2 0v1.083A6 6 0 0 0 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5" stroke="var(--icon-main)" strokeWidth="1.4" fill="none" />
+              </svg>
+              {hasNewNotifications && (
+                <span style={{ position: 'absolute', right: 2, top: 2, width: 10, height: 10, borderRadius: 10, background: 'var(--danger, #d32f2f)', boxShadow: '0 0 0 2px rgba(0,0,0,0.06)' }} />
+              )}
+            </button>
+
+            {/* Dark mode toggle */}
+            <button onClick={() => { if (typeof setDarkMode === 'function') setDarkMode(!darkMode); }} title={darkMode ? 'Switch to light mode' : 'Switch to dark mode'} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 6, display: 'flex', alignItems: 'center' }} aria-label="Toggle dark mode">
+              {darkMode ? (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden>
+                  <path d="M12 3v2" stroke="var(--icon-main)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                  <path d="M12 19v2" stroke="var(--icon-main)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                  <path d="M4.22 4.22l1.42 1.42" stroke="var(--icon-main)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                  <path d="M18.36 18.36l1.42 1.42" stroke="var(--icon-main)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                  <path d="M1 12h2" stroke="var(--icon-main)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                  <path d="M21 12h2" stroke="var(--icon-main)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                  <path d="M4.22 19.78l1.42-1.42" stroke="var(--icon-main)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                  <path d="M18.36 5.64l1.42-1.42" stroke="var(--icon-main)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                  <circle cx="12" cy="12" r="3" stroke="var(--icon-main)" strokeWidth="1.6" fill="var(--bg-drawer)" />
+                </svg>
+              ) : (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden>
+                  <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" stroke="var(--icon-main)" strokeWidth="1.4" fill="none" />
+                </svg>
+              )}
+            </button>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <button
+                ref={profileBtnRef}
+                onClick={(e) => { if (e.altKey || e.ctrlKey) { showAvatarDebug(); return; } safeNavigate('/account-settings'); }}
+                style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                title={fullEmail || fullName || 'Account Settings'}
+                aria-label={fullEmail || fullName || 'Account Settings'}
+              >
+                <div
+                  title={fullName || 'Profile'}
+                  aria-label={fullName || 'Profile'}
+                  style={{ width: 26, height: 26, borderRadius: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--border-main)', color: 'var(--text-main)', fontSize: 12, fontWeight: 700, border: '1px solid var(--border-main)' }}
+                >
+                  {getInitials(fullName)}
+                </div>
+              </button>
+
+              <button onClick={() => safeNavigate('/account-settings')} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', textAlign: 'left' }} title={fullName} aria-label={fullName}>
+                <span style={{ color: 'var(--text-main)', fontWeight: 400, fontSize: 14, maxWidth: 220, display: 'inline-block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{nameToDisplay}</span>
+              </button>
+            </div>
+          </div>
         </div>
       </div>
       {/* Drawer overlay */}
@@ -670,88 +821,37 @@ useEffect(() => {
           willChange: "transform"
         }}
       >
-        <span style={{ marginLeft: 24, fontWeight: "var(--font-weight-main)", fontSize: 18, color: "var(--text-main)", display: "inline-block", marginBottom: 24 }} />
-        {/* Mobile drawer: primary nav + remaining nav entries so mobile matches desktop order */}
-        {/* Intentionally left minimal: primary nav is available in the topbar.
-            Drawer should not duplicate the full nav, so we keep the drawer
-            minimal and rely on the topbar buttons for navigation. */}
-        <button
-          style={{ ...drawerBtnStyle, display: "flex", alignItems: "center", gap: 10, ...(isActivePath('/notifications') ? { color: activeLinkStyle.color, fontWeight: activeLinkStyle.fontWeight } : {}) }}
-          onClick={() => { navigate("/notifications"); setDrawerOpen(false); }}
-        >
-          <span>
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-              <path d="M12 22c1.1 0 2-.9 2-2h-4a2 2 0 0 0 2 2zm6-6V11c0-3.07-1.63-5.64-5-6.32V4a1 1 0 1 0-2 0v.68C7.63 5.36 6 7.92 6 11v5l-1.29 1.29A1 1 0 0 0 6 19h12a1 1 0 0 0 .71-1.71L18 16z" stroke="var(--icon-main)" strokeWidth="1.5" fill="none"/>
-            </svg>
-          </span>
-          Notifications
-        </button>
-        <div style={{ width: "100%" }}>
-          <button
-            style={{ ...drawerBtnStyle, display: "flex", alignItems: "center", gap: 10, width: "100%", justifyContent: "space-between", ...(isActivePath('/account-settings') ? { color: activeLinkStyle.color, fontWeight: activeLinkStyle.fontWeight } : {}) }}
-            onClick={() => setSettingsOpen((v) => !v)}
-          >
-            <span style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-                <circle cx="12" cy="12" r="3" stroke="var(--icon-main)" strokeWidth="1.5" fill="none"/>
-                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.09A1.65 1.65 0 0 0 11 3.09V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.09c.36.13.7.3 1 .51a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" stroke="var(--icon-main)" strokeWidth="1.5" fill="none"/>
-              </svg>
-              Settings
-            </span>
-            <span style={{ transition: "transform 0.2s", transform: settingsOpen ? "rotate(90deg)" : "rotate(0deg)" }}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                <path d="M8 10l4 4 4-4" stroke="var(--icon-main)" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            </span>
-          </button>
-          {settingsOpen && (
-            <div style={{ paddingLeft: 36, paddingTop: 4, paddingBottom: 4 }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                <button onClick={() => { navigate('/account-settings'); setDrawerOpen(false); setSettingsOpen(false); }} style={{ background: 'none', border: 'none', color: 'var(--icon-main)', textAlign: 'left', padding: '6px 8px', borderRadius: 6, cursor: 'pointer' }}>Account Settings</button>
-                <label style={{ color: "var(--icon-main)", fontWeight: 500, display: "flex", alignItems: "center", gap: 8 }}>
-                  <input type="checkbox" checked={darkMode} onChange={() => setDarkMode((prev) => { localStorage.setItem('darkMode', !prev); return !prev; })} style={{ accentColor: "var(--icon-main)" }} />
-                  Dark Mode
-                </label>
-              </div>
-            </div>
-          )}
+        <span style={{ marginLeft: 24, fontWeight: "var(--font-weight-main)", fontSize: 18, color: "var(--text-main)", display: "inline-block", marginBottom: 12 }}>Hair House</span>
+        {/* Render primary navigation from topbar here (vertical list) */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, padding: '0 8px' }}>
+          {navButtons.map((btn) => {
+            const active = isActivePath(btn.path);
+            return (
+              <button
+                key={btn.label}
+                onClick={() => { navigate(btn.path); setDrawerOpen(false); }}
+                style={{
+                  ...drawerBtnStyle,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 10,
+                  justifyContent: 'flex-start',
+                  ...(active ? { color: activeLinkStyle.color, fontWeight: activeLinkStyle.fontWeight } : {})
+                }}
+              >
+                <span style={{ width: 18, display: 'inline-block' }} />
+                {btn.label}
+              </button>
+            );
+          })}
         </div>
-        <button
-          style={{ ...drawerBtnStyle, display: "flex", alignItems: "center", gap: 10, ...(isActivePath('/help') ? { color: activeLinkStyle.color, fontWeight: activeLinkStyle.fontWeight } : {}) }}
-          onClick={() => { navigate("/help"); setDrawerOpen(false); }}
-        >
-          <span>
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-              <circle cx="12" cy="12" r="10" stroke="var(--icon-main)" strokeWidth="1.5" fill="none"/>
-              <path d="M12 16v-1c0-1.1.9-2 2-2s2-.9 2-2-.9-2-2-2-2 .9-2 2" stroke="var(--icon-main)" strokeWidth="1.5" fill="none"/>
-              <circle cx="12" cy="18" r="1" fill="var(--icon-main)"/>
-            </svg>
-          </span>
-          Help
-        </button>
-        <button
-          style={{ ...drawerBtnStyle, display: "flex", alignItems: "center", gap: 10, ...(isActivePath('/about') ? { color: activeLinkStyle.color, fontWeight: activeLinkStyle.fontWeight } : {}) }}
-          onClick={() => { navigate("/about"); setDrawerOpen(false); }}
-        >
-          <span>
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-              <circle cx="12" cy="12" r="10" stroke="var(--icon-main)" strokeWidth="1.5" fill="none"/>
-              <path d="M12 8v4" stroke="var(--icon-main)" strokeWidth="1.5" fill="none"/>
-              <circle cx="12" cy="16" r="1" fill="var(--icon-main)"/>
-            </svg>
-          </span>
-          About
-        </button>
         <div style={{ marginTop: "auto", padding: "1rem 1rem 1.25rem 1rem", borderTop: "1px solid var(--border-main)", display: "flex", alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              {(!avatarBroken && avatarUrl) ? (
-                <img src={avatarUrl} alt={fullName || 'Profile'} title={fullEmail || fullName || 'Profile'} onError={(ev) => handleAvatarError(avatarUrl, ev)} onClick={(e) => { if (e.altKey || e.ctrlKey) { showAvatarDebug(); } }} style={{ width: 44, height: 44, borderRadius: 999, objectFit: 'cover', border: '2px solid var(--border-main)' }} />
-              ) : (
-                <div style={{ width: 44, height: 44, borderRadius: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid var(--border-main)', background: 'var(--border-main)', color: 'var(--text-main)', fontWeight: 700 }}>{getInitials(fullName)}</div>
-              )}
+              {/* Use a compact initials avatar in the drawer footer (deterministic, no external images) */}
+              <div style={{ width: 28, height: 28, borderRadius: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--border-main)', background: 'var(--border-main)', color: 'var(--text-main)', fontWeight: 700, fontSize: 12 }}>{getInitials(fullName)}</div>
               <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-                <div style={{ fontWeight: 700, color: 'var(--text-main)', maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={fullName}>{nameToDisplay}</div>
-                <div style={{ fontSize: 12, color: 'var(--muted)', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={fullEmail}>{emailToDisplay}</div>
+                <div style={{ fontWeight: 400, fontSize: 14, color: 'var(--text-main)', maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={fullName}>{nameToDisplay}</div>
+                  <div style={{ fontWeight: 400, fontSize: 12, color: 'var(--muted)', maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={fullEmail}>{emailToDisplay}</div>
               </div>
           </div>
 
@@ -761,15 +861,15 @@ useEffect(() => {
               style={{
                 background: 'transparent',
                 color: 'var(--logout-color, #d32f2f)',
-                border: '2px solid var(--logout-color, #d32f2f)',
-                padding: '6px 12px',
+                border: '1px solid var(--logout-color, #d32f2f)',
+                padding: '4px 10px',
                 borderRadius: 6,
                 fontWeight: 700,
-                fontSize: 13,
+                fontSize: 12,
                 cursor: 'pointer'
               }}
             >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" style={{ marginRight: 8 }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{ marginRight: 6 }}>
                 <path d="M16 17v1a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v1" stroke="currentColor" strokeWidth="1.5" fill="none"/>
                 <path d="M21 12H9m0 0l3-3m-3 3l3 3" stroke="currentColor" strokeWidth="1.5" fill="none"/>
               </svg>

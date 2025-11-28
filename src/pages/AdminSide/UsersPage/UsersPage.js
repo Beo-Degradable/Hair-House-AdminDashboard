@@ -1,5 +1,6 @@
 // Users listing: realtime table, search, delete with history, open Add modal.
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
+import { useLocation } from 'react-router-dom';
 import { collection, onSnapshot, doc, addDoc, serverTimestamp, getDoc, deleteDoc } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
 import { db, functions } from '../../../firebase';
@@ -13,6 +14,9 @@ const UsersPage = () => {
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState('');
   const [addOpen, setAddOpen] = useState(false);
+  const [highlightedId, setHighlightedId] = useState(null);
+  const rowRefs = useRef(new Map());
+  const location = useLocation();
 
   useEffect(() => {
     const col = collection(db, 'users');
@@ -26,6 +30,26 @@ const UsersPage = () => {
     });
     return () => unsub();
   }, []);
+
+  useEffect(() => {
+    if (!users || users.length === 0) return;
+    try {
+      const params = new URLSearchParams(location.search || '');
+      const id = params.get('id');
+      if (!id) return;
+      const exists = users.find(u => u.id === id);
+      if (!exists) return;
+      setHighlightedId(id);
+      const el = rowRefs.current.get(id);
+      if (el && typeof el.scrollIntoView === 'function') {
+        setTimeout(() => {
+          try { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) { el.scrollIntoView(); }
+        }, 60);
+      }
+      const clearId = setTimeout(() => setHighlightedId(null), 6000);
+      return () => clearTimeout(clearId);
+    } catch (e) {}
+  }, [location.search, users]);
 
   const handleDelete = async (id) => {
     if (!id) return;
@@ -102,7 +126,7 @@ const UsersPage = () => {
           </thead>
           <tbody>
             {filtered.map(u => (
-              <tr key={u.id} style={{ borderBottom: '1px solid var(--border-main)' }}>
+              <tr key={u.id} ref={(el) => { if (el) rowRefs.current.set(u.id, el); }} style={{ borderBottom: '1px solid var(--border-main)', ...(highlightedId === u.id ? { background: 'rgba(202,169,10,0.08)', boxShadow: 'inset 4px 0 0 0 rgba(202,169,10,0.9)' } : {}) }}>
                 <td style={{ padding: '8px 6px' }}>{u.name}</td>
                 <td style={{ padding: '8px 6px' }}>{u.email}</td>
                 <td style={{ padding: '8px 6px', textTransform: 'capitalize' }}>{u.role}</td>
