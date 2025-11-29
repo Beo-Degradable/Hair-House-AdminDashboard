@@ -48,7 +48,7 @@ export default function AdminDrawer({
     const style = {
       ...drawerBtnStyle,
       background: active ? activeBg : (hovered ? hoverBg : baseBg),
-      color: active ? (activeColor || '#fff') : 'var(--text-main)',
+      color: active ? (activeColor || '#fff') : '#fff',
       boxShadow: hovered && !active ? (darkMode ? '0 6px 18px rgba(0,0,0,0.6)' : '0 8px 20px rgba(0,0,0,0.06)') : 'none',
       transform: hovered && !active ? 'translateY(-1px)' : 'none',
       transition: 'background 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease',
@@ -80,8 +80,8 @@ export default function AdminDrawer({
         maxWidth: '100%',
         minWidth: '180px',
         height: 'calc(100vh - 56px)',
-        background: 'var(--bg-drawer)',
-        borderRight: '2px solid var(--border-main)',
+        background: 'var(--bg-drawer, rgba(35,35,35,0.96))',
+        borderRight: '2px solid var(--border-main, rgba(201,184,106,0.9))',
         boxShadow: drawerOpen ? (darkMode ? '2px 0 16px #0008' : '2px 0 16px rgba(255,215,0,0.2)') : 'none',
         zIndex: 1300,
         transition: 'transform 0.32s cubic-bezier(.4,0,.2,1)',
@@ -101,11 +101,22 @@ export default function AdminDrawer({
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6, padding: '12px 8px' }}>
         {navButtons.map((btn) => {
           const active = isActivePath(btn.path);
+          const handleClick = () => {
+            try {
+              if (typeof navigate === 'function') navigate(btn.path);
+              else if (typeof window !== 'undefined' && window.location) window.location.href = btn.path;
+            } catch (e) {
+              try { if (typeof window !== 'undefined' && window.location) window.location.href = btn.path; } catch (err) {}
+            } finally {
+              try { setDrawerOpen(false); } catch (e) {}
+            }
+          };
+
           return (
-            <DrawerButton key={btn.label} onClick={() => { navigate(btn.path); setDrawerOpen(false); }} active={active}>
+            <DrawerButton key={btn.label} onClick={handleClick} active={active}>
               {/* left accent placeholder */}
               <div style={{ width: 6, height: 28, borderRadius: 4, background: active ? '#7c4dff' : 'transparent', marginRight: 6 }} />
-              <span style={{ fontSize: 14, fontWeight: 400, color: active ? '#fff' : 'var(--text-main)' }}>{btn.label}</span>
+              <span style={{ fontSize: 14, fontWeight: 400, color: '#fff' }}>{btn.label}</span>
             </DrawerButton>
           );
         })}

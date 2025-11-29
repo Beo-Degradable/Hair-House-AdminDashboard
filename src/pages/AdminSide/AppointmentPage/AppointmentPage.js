@@ -84,7 +84,12 @@ export default function AppointmentPage() {
         const prevStatus = normalize(editing.status || '');
         const newStatus = normalize(payload.status || editing.status || '');
         if (prevStatus !== 'completed' && newStatus === 'completed') {
-          const svcName = editing.serviceName || payload.serviceName;
+            const svcName = (
+              editing.serviceName || editing.service ||
+              (Array.isArray(editing.services) && editing.services.length ? (editing.services[0].name || editing.services[0].serviceName || editing.services[0].title) : null) ||
+              payload.serviceName || payload.service ||
+              (Array.isArray(payload.services) && payload.services.length ? (payload.services[0].name || payload.services[0].serviceName || payload.services[0].title) : null)
+            );
           if (svcName) {
             const svcCol = collection(db, 'services');
             const svcQuery = q(svcCol, where('name', '==', svcName));
@@ -223,7 +228,9 @@ export default function AppointmentPage() {
       <td style={{ padding: 8 }}>{formatAppointmentRange(a)}</td>
       <td style={{ padding: 8 }}>{a.clientName}</td>
       <td style={{ padding: 8, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={a.email || a.clientEmail || ''}>{a.email || a.clientEmail || ''}</td>
-      <td style={{ padding: 8 }}>{a.serviceName}</td>
+      <td style={{ padding: 8 }}>{
+        a.serviceName || a.service || (Array.isArray(a.services) && a.services.length ? a.services.map(s => s.name || s.serviceName || s.title || '').filter(Boolean).join(', ') : '')
+      }</td>
       <td style={{ padding: 8 }}>{a.stylistName}</td>
       <td style={{ padding: 8 }}>{a.branch}</td>
   <td style={{ padding: 8, textTransform: 'capitalize' }}>{String(a.status || '').toLowerCase() === 'done' ? 'completed' : a.status}</td>

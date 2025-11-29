@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import BookingWidget from '../../components/BookingWidget';
-import KPIRow from '../../components/KPIRow';
+// KPIRow removed per request
 
 // StylistHome — landing page with today's appointments and KPI snapshot
 const StylistHome = ({ onLogout }) => {
@@ -20,10 +20,7 @@ const StylistHome = ({ onLogout }) => {
                 <BookingWidget branch={branch} />
               </div>
 
-              <div style={{ marginTop: 8, background: 'var(--bg-drawer)', border: '1px solid var(--border-main)', borderRadius: 10, padding: 12 }}>
-                <h3 style={{ marginTop: 0 }}>Performance</h3>
-                <KPIRow branch={branch} />
-              </div>
+              {/* Performance KPI row removed */}
             </div>
           </section>
         </div>

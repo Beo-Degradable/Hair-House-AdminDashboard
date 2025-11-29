@@ -1,6 +1,6 @@
 // Services list: filter by type/search, CRUD via modals, simple table layout.
 import React, { useState, useEffect, useRef } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { collection, onSnapshot, deleteDoc, doc } from 'firebase/firestore';
 import { sanitizeForSearch } from '../../../utils/validators';
 import { db } from '../../../firebase';
@@ -31,10 +31,14 @@ const ServicePage = () => {
   const [services, setServices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [addOpen, setAddOpen] = useState(false);
+  const [addFixedType, setAddFixedType] = useState('');
   const [editOpen, setEditOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [selectedType, setSelectedType] = useState('');
+  const [selectedBranch, setSelectedBranch] = useState('');
   const isDesktop = useMediaQuery('(min-width: 900px)');
+  const [expandedSections, setExpandedSections] = useState({});
+  const navigate = useNavigate();
   const [highlightedId, setHighlightedId] = useState(null);
   const rowRefs = useRef(new Map());
   const location = useLocation();
@@ -73,10 +77,20 @@ const ServicePage = () => {
     } catch (e) {}
   }, [location.search, services]);
 
+  // Branch definitions: map branch name -> allowed service types
+  const BRANCH_MAP = {
+    'Evangelista': ['hair', 'nails', 'skin'],
+    'Lawas': ['hair', 'nails'],
+    'Lipa': ['hair', 'nails', 'skin'],
+    'Tanauan': ['hair', 'nails']
+  };
+
   const filtered = services.filter(s => {
     const matchesQuery = (s.name || '').toLowerCase().includes(query.toLowerCase());
     const matchesType = selectedType ? (s.type === selectedType) : true;
-    return matchesQuery && matchesType;
+    const svcType = (s.type || '').toLowerCase();
+    const matchesBranch = selectedBranch ? (BRANCH_MAP[selectedBranch] || []).includes(svcType) : true;
+    return matchesQuery && matchesType && matchesBranch;
   });
 
   const formatDuration = (s) => {
@@ -103,75 +117,129 @@ const ServicePage = () => {
   };
 
   return (
-    <div style={{ padding: 24 }}>
-      <h2>Services</h2>
-      <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 16 }}>
-  <input value={query} onChange={(e) => setQuery(sanitizeForSearch(e.target.value))} placeholder="Search services" style={{ padding: 8, borderRadius: 8, border: '1px solid var(--border-main)' }} />
-        {/* On desktop show dropdown next to search, on mobile show Add button here and the pill buttons below */}
-        {isDesktop ? (
-          <select value={selectedType} onChange={(e) => setSelectedType(e.target.value)} style={{ marginLeft: 8, padding: 8, borderRadius: 8, border: '1px solid var(--border-main)', background: 'var(--surface)', color: 'var(--text-primary)' }}>
-            <option value="">All types</option>
-            <option value="hair">Hair</option>
-            <option value="skin">Skin</option>
-            <option value="nails">Nails</option>
-          </select>
-        ) : null}
+    <div style={{ padding: '0px 12px', fontFamily: 'system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif', color: '#fbfbfb' }}>
+      {loading ? <div style={{ marginBottom: 12 }}>Loading…</div> : null}
 
-        <button onClick={() => setAddOpen(true)} className="button-gold-dark" style={{ padding: '8px 16px', borderRadius: 999 }}>Add Service</button>
-        {loading ? <div style={{ marginLeft: 12 }}>Loading…</div> : null}
-      </div>
-
-      {/* On mobile show the pill buttons row; hide on desktop since dropdown is used there */}
-      {!isDesktop ? (
-        <div style={{ display: 'flex', gap: 10, marginBottom: 12 }}>
-          {['hair','skin','nails'].map(t => {
-            const isActive = selectedType === t;
-            return (
-              <button key={t} onClick={() => setSelectedType(isActive ? '' : t)} style={{
-                padding: '9px 14px',
-                minWidth: 96,
-                borderRadius: 7,
-                background: isActive ? '#b8860b' : 'var(--dark-grey)',
-                color: isActive ? 'var(--black)' : 'var(--text-primary)',
-                border: `1px solid ${isActive ? 'var(--dark-grey)' : 'var(--gold)'}`,
+      {/* Branch selector buttons (horizontal) */}
+      <div style={{ display: 'flex', gap: 10, marginBottom: 8, alignItems: 'center', flexWrap: 'wrap', marginTop: 0 }}>
+        {['All branches', 'Evangelista', 'Lawas', 'Lipa', 'Tanauan'].map((b) => {
+          const isAll = b === 'All branches';
+          const key = isAll ? '' : b;
+          const isActive = isAll ? (selectedBranch === '') : (selectedBranch === b);
+          return (
+            <button
+              key={b}
+              onClick={() => setSelectedBranch(isAll ? '' : b)}
+              style={{
+                padding: '8px 12px',
+                borderRadius: 8,
+                background: isActive ? 'rgba(184,136,11,0.12)' : 'transparent',
+                color: '#fbfbfb',
+                border: `1px solid ${isActive ? 'rgba(184,136,11,0.45)' : 'rgba(184,136,11,0.35)'}`,
                 fontWeight: 600,
-              }}>{t.charAt(0).toUpperCase() + t.slice(1)}</button>
-            );
-          })}
-        </div>
-      ) : null}
-
-      <div style={{ overflowX: 'auto' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 720 }}>
-          <thead>
-            <tr style={{ textAlign: 'left', borderBottom: '1px solid var(--border-main)', background: 'var(--table-head-bg, transparent)' }}>
-              <th style={{ padding: '12px 16px' }}>Name</th>
-              <th style={{ padding: '12px 16px' }}>Duration</th>
-              <th style={{ padding: '12px 16px' }}>Price</th>
-              <th style={{ padding: '12px 16px' }}>Type</th>
-              <th style={{ padding: '12px 16px', width: 160 }}>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.map(s => (
-              <tr key={s.id} ref={(el) => { if (el) rowRefs.current.set(s.id, el); }} style={{ borderBottom: '1px solid var(--border-main)', ...(highlightedId === s.id ? { background: 'rgba(202,169,10,0.08)', boxShadow: 'inset 4px 0 0 0 rgba(202,169,10,0.9)' } : {}) }}>
-                <td style={{ padding: '12px 16px' }}>{s.name}</td>
-                <td style={{ padding: '12px 16px' }}>{formatDuration(s)}</td>
-                <td style={{ padding: '12px 16px' }}>{formatPeso(s.price)}</td>
-                <td style={{ padding: '12px 16px', textTransform: 'capitalize' }}>{s.type}</td>
-                <td style={{ padding: '12px 16px' }}>
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <button onClick={() => { setEditingId(s.id); setEditOpen(true); }} className="button-gold-dark" style={{ padding: '6px 8px' }}>Edit</button>
-                    <button onClick={() => handleDelete(s.id)} className="btn btn-danger" style={{ padding: '6px 8px' }}>Delete</button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                cursor: 'pointer'
+              }}
+            >
+              {b}
+            </button>
+          );
+        })}
       </div>
 
-      <AddServiceModal open={addOpen} onClose={() => setAddOpen(false)} />
+      {/* Explicit type containers: Hair, Nails, Skin */}
+      <div>
+        {(() => {
+          const byType = (typeMatch) => filtered.filter(s => {
+            const t = (s.type || '').toLowerCase();
+            const c = (s.category || '').toLowerCase();
+            return t.includes(typeMatch) || c.includes(typeMatch);
+          });
+
+          const hairList = byType('hair');
+          const nailsList = byType('nail');
+          const skinList = byType('skin');
+
+          // remaining others
+          const consumed = new Set([...hairList.map(s => s.id), ...nailsList.map(s => s.id), ...skinList.map(s => s.id)]);
+          const others = filtered.filter(s => !consumed.has(s.id));
+
+          const renderSection = (title, list, addType, alwaysShow=false) => {
+            // show placeholder when empty if alwaysShow=true
+            const empty = !list || list.length === 0;
+            if (empty && !alwaysShow) return null;
+            const expanded = !!expandedSections[title];
+            // limit items: desktop 6 (3x2), mobile 4 (2x2)
+            const limit = isDesktop ? 6 : 4;
+            const displayList = expanded ? (list || []) : ((list || []).slice(0, limit));
+
+            return (
+              <section key={title} style={{ marginBottom: 20 }}>
+                <div style={{ border: '1px solid var(--border-main)', borderRadius: 8, padding: 12, background: 'transparent' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                    <h3 style={{ margin: 0 }}>{title}</h3>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
+                        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                          <button onClick={() => { setAddFixedType(addType || ''); setAddOpen(true); }} style={{ padding: '8px 12px', borderRadius: 8, background: 'transparent', color: '#fbfbfb', border: '1px solid rgba(184,136,11,0.35)', cursor: 'pointer' }}>Add Service</button>
+                          {/* See-more removed per request: no toggle shown on any breakpoint */}
+                        </div>
+                        {addType ? (
+                          <button
+                              onClick={() => navigate(`/services/type/${addType}`)}
+                              style={{
+                                background: 'transparent',
+                                border: 'none',
+                                padding: 0,
+                                margin: 0,
+                                color: 'rgba(184,136,11,0.65)',
+                                cursor: 'pointer',
+                                fontSize: 13,
+                                fontWeight: 600,
+                                textDecoration: 'underline'
+                              }}
+                            >
+                              {`View all ${addType}>>`}
+                            </button>
+                        ) : null}
+                      </div>
+                    </div>
+                  {empty ? (
+                    <div style={{ padding: 18, color: 'var(--muted)', borderRadius: 6, background: 'var(--surface)' }}>No services yet. Click "Add Service" to create one.</div>
+                  ) : (
+                    <div style={{ display: 'grid', gridTemplateColumns: isDesktop ? 'repeat(3, 1fr)' : 'repeat(2, 1fr)', gap: 12 }}>
+                      {displayList.map(s => (
+                        <div key={s.id} ref={(el) => { if (el) rowRefs.current.set(s.id, el); }} style={{ background: 'var(--bg-drawer)', border: '1px solid var(--border-main)', borderRadius: 10, padding: 12, boxSizing: 'border-box', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div style={{ fontWeight: 700 }}>{(!isDesktop && s.name && s.name.length > 25) ? `${s.name.slice(0,22)}...` : s.name}</div>
+                            <div style={{ width: 36, height: 36, borderRadius: 36, overflow: 'hidden', background: '#ddd', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              {(s.imageUrl || s.imageBase64 || s.image) ? <img src={(s.imageUrl || s.imageBase64 || s.image)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <div style={{ fontSize: 12, color: '#333' }}>Img</div>}
+                            </div>
+                          </div>
+                          <div style={{ color: 'var(--text-secondary)', fontSize: 13 }}>{formatDuration(s)} {s.price != null ? `• ${formatPeso(s.price)}` : ''}</div>
+                          <div style={{ display: 'flex', gap: 8, marginTop: 'auto' }}>
+                            <button onClick={() => { setEditingId(s.id); setEditOpen(true); }} style={{ padding: '6px 8px', background: 'transparent', color: '#fbfbfb', border: '1px solid rgba(184,136,11,0.35)', borderRadius: 6, cursor: 'pointer' }}>Edit</button>
+                            <button onClick={() => handleDelete(s.id)} className="btn btn-danger" style={{ padding: '6px 8px' }}>Delete</button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </section>
+            );
+          };
+
+          return (
+            <>
+              {renderSection('Hair Services', hairList, 'hair', true)}
+              {renderSection('Nail & Hand Care', nailsList, 'nails', true)}
+              {renderSection('Skin Services', skinList, 'skin', (selectedBranch === '' || (BRANCH_MAP[selectedBranch] || []).includes('skin')))}
+              {others.length ? renderSection('Other Services', others, '') : null}
+            </>
+          );
+        })()}
+      </div>
+
+      <AddServiceModal open={addOpen} fixedType={addFixedType} onClose={() => { setAddOpen(false); setAddFixedType(''); }} />
       <EditServiceModal open={editOpen} id={editingId} onClose={() => { setEditOpen(false); setEditingId(null); }} />
     </div>
   );

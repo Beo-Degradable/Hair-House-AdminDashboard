@@ -23,7 +23,7 @@ export default function ViewAppointmentModal({ appointment, open = false, onClos
             </div>
           </div>
 
-          <div style={{ marginTop: 8 }}><strong>Service:</strong> {appointment.serviceName}</div>
+          <div style={{ marginTop: 8 }}><strong>Service:</strong> {appointment.serviceName || appointment.service || (Array.isArray(appointment.services) && appointment.services.length ? appointment.services.map(s => s.name || s.serviceName || s.title || '').filter(Boolean).join(', ') : '')}</div>
           <div><strong>Stylist:</strong> {appointment.stylistName}</div>
           <div><strong>When:</strong> {new Date(appointment.startTime?.toDate ? appointment.startTime.toDate() : appointment.startTime).toLocaleString()}</div>
           <div><strong>Status:</strong> {appointment.status}</div>

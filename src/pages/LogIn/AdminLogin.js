@@ -142,7 +142,30 @@ const AdminLogin = ({ onLogin }) => {
 					setError("User role not found.");
 				}
 			} catch (err) {
-				setError(err.message || "Login failed.");
+				// Map common Firebase Auth errors to friendly messages so we don't
+				// show raw error codes like "auth/invalid-credential" to users.
+				const code = err && (err.code || (err.error && err.error.code));
+				let friendly = "Login failed. Please try again.";
+				if (code) {
+					switch (code) {
+						case "auth/wrong-password":
+					case "auth/invalid-credential":
+					case "auth/user-not-found":
+					case "auth/invalid-email":
+							friendly = "Email or password is incorrect. Please try again.";
+							break;
+						case "auth/too-many-requests":
+							friendly = "Too many failed attempts. Try again later.";
+							break;
+						default:
+							friendly = "Login failed. Please try again.";
+					}
+				} else if (err && typeof err === "string") {
+					// sometimes an error string is passed
+					friendly = err;
+				}
+				console.warn("Login error:", err);
+				setError(friendly);
 			}
 			setLoading(false);
 		};

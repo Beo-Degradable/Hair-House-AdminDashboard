@@ -3,6 +3,7 @@
 // Admin top navigation bar: responsive nav buttons, notifications indicator,
 // avatar/profile menu, drawer with settings & dark mode toggle.
 import React, { useState, useEffect, useRef, useContext } from "react";
+import { createPortal } from 'react-dom';
 import { AuthContext } from "../../context/AuthContext";
 import { auth, db } from "../../firebase";
 import { useNavigate, useLocation } from "react-router-dom";
@@ -22,18 +23,79 @@ const navButtons = [
   { label: 'Profiles', path: '/profiles' },
   { label: 'Users', path: '/users' },
 ];
+// Simple inline SVG icons for each nav button. They use `currentColor` so color follows topbar/drawer.
+const navIcons = {
+  Home: (size=18) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden>
+      <path d="M3 11.5L12 4l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1V11.5z" fill="currentColor" />
+    </svg>
+  ),
+  Appointments: (size=18) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden>
+      <path d="M8 7V3h8v4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+      <rect x="3" y="6" width="18" height="15" rx="2" stroke="currentColor" strokeWidth="1.4" />
+    </svg>
+  ),
+  Products: (size=18) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden>
+          <path d="M6 7h12v11a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V7z" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+          <path d="M9 7a3 3 0 0 1 6 0" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+    </svg>
+  ),
+  Services: (size=18) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden>
+      <circle cx="6" cy="7" r="2" stroke="currentColor" strokeWidth="1.4" fill="none" />
+      <circle cx="18" cy="17" r="2" stroke="currentColor" strokeWidth="1.4" fill="none" />
+      <path d="M8 9l8 8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M16 9l-8 8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M10.5 6.5l3 3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  ),
+  Promotions: (size=18) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden>
+      <path d="M3 12l8-8 10 10-8 8L3 12z" stroke="currentColor" strokeWidth="1.2" fill="none" />
+      <circle cx="9" cy="9" r="1.2" fill="currentColor" />
+    </svg>
+  ),
+  Inventory: (size=18) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden>
+      <rect x="3" y="7" width="18" height="12" rx="2" stroke="currentColor" strokeWidth="1.4" />
+      <path d="M16 3v4" stroke="currentColor" strokeWidth="1.4" />
+    </svg>
+  ),
+  Profiles: (size=18) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden>
+      <rect x="2" y="4" width="20" height="16" rx="2" stroke="currentColor" strokeWidth="1.2" fill="none" />
+      <circle cx="8" cy="10" r="2" fill="currentColor" />
+      <path d="M14 8h6" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+      <path d="M14 12h6" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+    </svg>
+  ),
+  Users: (size=18) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden>
+      <path d="M16 11c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3z" fill="currentColor" />
+      <path d="M8 11c1.657 0 3-1.343 3-3S9.657 5 8 5 5 6.343 5 8s1.343 3 3 3z" fill="currentColor" />
+      <path d="M2 20c0-2.2 3.6-4 8-4s8 1.8 8 4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M16 14c-1 0-2 .5-2 1.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+      <path d="M8 14c1 0 2 .5 2 1.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+    </svg>
+  )
+};
 
 const drawerWidth = 260;
+const desktopDenseWidth = 72;
 const drawerBtnStyle = {
   width: "100%",
   background: "var(--btn-bg)",
-  color: "var(--text-main)",
+  color: "var(--text-main, white)",
   border: "none",
   padding: "1rem 1.5rem",
   textAlign: "left",
   cursor: "pointer",
   fontWeight: "var(--font-weight-main)",
 };
+// A faded gold used for subtle borders (search, avatar)
+const fadedGold = 'rgba(202,169,10,0.28)';
 
 const TopBar = ({ onLogout, darkMode, setDarkMode, settingsOpen, setSettingsOpen }) => {
   const navigate = useNavigate();
@@ -41,6 +103,9 @@ const TopBar = ({ onLogout, darkMode, setDarkMode, settingsOpen, setSettingsOpen
   const { user } = useContext(AuthContext);
 
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [denseSidebar, setDenseSidebar] = useState(() => {
+    try { return localStorage.getItem('hh_dense_sidebar_v1') === '1'; } catch (e) { return false; }
+  });
   const [showProfileMenu, setShowProfileMenu] = useState(false); // deprecated; dropdown removed
   const profileBtnRef = useRef(null); // deprecated
   const profileMenuRef = useRef(null); // deprecated
@@ -333,13 +398,55 @@ useEffect(() => {
   const nameToDisplay = compactNameForUI(fullName) || shortenName(fullName, 20) || shorten(fullName, 12);
   const emailToDisplay = compactEmailForUI(fullEmail) || shortenEmail(fullEmail, 14);
 
-  // Compute drawer width based on viewport (keeps a sensible min/max)
-  const computedDrawerWidth = Math.min(drawerWidth, Math.max(180, Math.floor(viewportWidth * 0.85)));
+  // Compute drawer width based on viewport (keeps a sensible min/max).
+  // When `denseSidebar` is enabled on desktop, use a compact width.
+  const computedDrawerWidth = (() => {
+    const defaultWidth = Math.min(drawerWidth, Math.max(180, Math.floor(viewportWidth * 0.85)));
+    if (isWide && denseSidebar) return desktopDenseWidth;
+    return defaultWidth;
+  })();
+
+  // Compute left padding for the topbar title so it sits near the drawer's right edge
+  const titlePaddingLeft = (() => {
+    try {
+      if (!isWide) return '12px';
+      if (isWide && denseSidebar) return `${desktopDenseWidth + 12}px`;
+      return (typeof computedDrawerWidth === 'number') ? `${computedDrawerWidth + 12}px` : (computedDrawerWidth || '12px');
+    } catch (e) { return '12px'; }
+  })();
+
+  // Export the drawer offset as a CSS variable so other layout parts can react
+  useEffect(() => {
+    try {
+      // Reserve a fixed compact offset (desktopDenseWidth) when the dense rail
+      // is active so the main content remains in the same place even if the
+      // drawer expands as an overlay. Do NOT use computedDrawerWidth here
+      // because computedDrawerWidth changes while the overlay is open.
+      const val = (isWide && denseSidebar) ? `${desktopDenseWidth}px` : '0px';
+      document.documentElement.style.setProperty('--drawer-offset', val);
+    } catch (e) {}
+    return () => {};
+  }, [isWide, denseSidebar]);
 
   // Search expansion: expand the input when there are results to show
   const searchExpanded = showSearch && Array.isArray(searchResults) && searchResults.length > 0;
   // Fixed search bar width (does not change when results appear)
-  const searchBarWidth = Math.min(420, Math.max(240, Math.floor(viewportWidth * 0.28)));
+  // Responsive search width: smaller on narrow viewports so it doesn't dominate mobile topbar
+  const searchBarWidth = (() => {
+    if (viewportWidth < 420) {
+      // very small phones: allow between 120 and 220px, prefer ~60% of viewport
+      return Math.min(220, Math.max(120, Math.floor(viewportWidth * 0.6)));
+    }
+    if (viewportWidth < 720) {
+      // small tablets / landscape phones: between 160 and 300
+      return Math.min(300, Math.max(160, Math.floor(viewportWidth * 0.45)));
+    }
+    // desktop / wide: original sizing
+    return Math.min(420, Math.max(240, Math.floor(viewportWidth * 0.28)));
+  })();
+
+  // Shorter placeholder on small screens
+  const searchPlaceholder = viewportWidth < 420 ? 'Search…' : 'Search services, products, users';
 
   const getInitials = (name) => {
     // Return a single deterministic initial (first letter of first name).
@@ -369,6 +476,21 @@ useEffect(() => {
       if (typeof window !== 'undefined' && window.location) window.location.href = path;
     } catch (e) {
       // give up silently
+    }
+  };
+
+  // Determine whether a nav path should be considered active for highlighting.
+  const isActivePath = (path) => {
+    try {
+      const current = (location && location.pathname) || '/';
+      if (!path) return false;
+      if (path === '/') return current === '/';
+      if (current === path) return true;
+      // treat prefix matches as active (e.g. /products matches /products/123)
+      const normalized = path.endsWith('/') ? path.slice(0, -1) : path;
+      return current === normalized || current.startsWith(normalized + '/');
+    } catch (e) {
+      return false;
     }
   };
 
@@ -582,39 +704,43 @@ useEffect(() => {
         const ref = docRef(db, 'users', uid);
         const snap = await getDoc(ref);
         if (!mounted) return;
-        if (snap.exists()) {
+        if (snap && snap.exists()) {
           const data = snap.data();
           setPaymentProfile(data.paymentProfile || null);
-        } else {
-          setPaymentProfile(null);
         }
       } catch (e) {
-        console.warn('Failed to load payment profile', e);
-        setPaymentProfile(null);
+        // ignore profile loading errors
       }
     }
     loadProfile();
     return () => { mounted = false; };
-  }, [user && user.uid, auth && auth.currentUser && auth.currentUser.uid]);
+  }, [user]);
 
-  // Primary inline nav order
-  const primaryOrder = ["Home", "Appointments", "Inventory"];
-  const primaryNav = primaryOrder.map(label => navButtons.find(b => b.label === label)).filter(Boolean);
-  const moreNav = navButtons.filter(b => !primaryOrder.includes(b.label));
+  // Persist dense-sidebar preference
+  useEffect(() => {
+    try { localStorage.setItem('hh_dense_sidebar_v1', denseSidebar ? '1' : '0'); } catch (e) {}
+  }, [denseSidebar]);
 
-  // Active path check (exact or nested)
-  const isActivePath = (path) => {
+  // Derive a human-friendly page title from the current location
+  const getPageTitle = () => {
     try {
       const current = location?.pathname || '/';
-      if (!path) return false;
-      if (path === '/') return current === '/';
-      return current === path || current.startsWith(path + '/') || current.startsWith(path + '?');
-    } catch (e) { return false; }
+      if (!current || current === '/') return 'Home';
+      // Prefer a matching nav button label when possible
+      const match = navButtons.find(b => isActivePath(b.path));
+      if (match) return match.label;
+      // Fallback: use the last path segment and prettify it
+      const seg = current.split('/').filter(Boolean).pop() || '';
+      const pretty = seg.replace(/[-_]/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+      return pretty || 'Page';
+    } catch (e) {
+      return '';
+    }
   };
 
   const activeLinkStyle = {
-    color: 'var(--text-main)',
-    borderBottom: '2px solid var(--text-main)',
+    color: 'inherit',
+    borderBottom: '2px solid currentColor',
     paddingBottom: 4,
     fontWeight: 700
   };
@@ -627,7 +753,7 @@ useEffect(() => {
           width: "100%",
           height: 56,
           background: "var(--bg-drawer)",
-          color: "var(--icon-main)",
+          color: 'white',
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
@@ -638,19 +764,33 @@ useEffect(() => {
           zIndex: 1400,
           fontWeight: "var(--font-weight-main)",
           fontFamily: 'inherit',
-          transition: "background 0.3s, color 0.3s, font-weight 0.3s"
+          transition: "background 0.3s, color 0.3s, font-weight 0.3s",
+          borderBottom: '1px solid var(--border-faint, rgba(201,184,106,0.22))'
         }}
       >
+        {/* enforce white for topbar text/icons/inputs (use keyword 'white' and high specificity) */}
+        <style>{`
+          .admin-topbar { color: white !important; }
+          .admin-topbar * { color: white !important; }
+          .admin-topbar svg, .admin-topbar svg * { fill: white !important; stroke: white !important; }
+          .admin-topbar input.hh-search-input { color: white !important; }
+          .admin-topbar input::placeholder { color: rgba(255,255,255,0.72) !important; }
+          .admin-topbar .hh-search-result { color: white !important; }
+        `}</style>
+        {/* vertical seam aligned to drawer's right border so the border appears continuous under the topbar */}
+        {isWide && (
+          <div style={{ position: 'absolute', top: 0, left: (isWide && denseSidebar) ? `${desktopDenseWidth}px` : (typeof computedDrawerWidth === 'number' ? `${computedDrawerWidth}px` : computedDrawerWidth), height: 56, width: 2, background: 'var(--border-faint, rgba(201,184,106,0.22))', pointerEvents: 'none', zIndex: 1401 }} />
+        )}
   <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <button
-            onClick={() => setDrawerOpen((v) => !v)}
+            onClick={() => { if (isWide) { setDenseSidebar(d => !d); } else { setDrawerOpen((v) => !v); } }}
             aria-expanded={drawerOpen}
             aria-controls="admin-drawer"
             className="admin-topbar-drawer-btn"
             style={{
               background: "none",
               border: "none",
-              color: "var(--icon-main)",
+              color: 'inherit',
               fontSize: 20,
               cursor: "pointer",
               marginRight: 10,
@@ -660,89 +800,98 @@ useEffect(() => {
             aria-label="Open drawer"
           >
             <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
-              <rect x="4" y="6" width="16" height="2" rx="1" fill="var(--icon-main)" />
-              <rect x="4" y="11" width="16" height="2" rx="1" fill="var(--icon-main)" />
-              <rect x="4" y="16" width="16" height="2" rx="1" fill="var(--icon-main)" />
+              <rect x="4" y="6" width="16" height="2" rx="1" fill="currentColor" />
+              <rect x="4" y="11" width="16" height="2" rx="1" fill="currentColor" />
+              <rect x="4" y="16" width="16" height="2" rx="1" fill="currentColor" />
             </svg>
           </button>
           {/* Topbar navigation removed per request: keep drawer toggle only for opening the sidebar. */}
+        </div>
+        {/* Left-aligned page title (near drawer border). Visible on desktop & mobile. */}
+        <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-start', alignItems: 'center', pointerEvents: 'none', paddingLeft: titlePaddingLeft }}>
+          <div style={{ color: 'currentColor', fontWeight: 700, fontSize: 16, maxWidth: '64%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textTransform: 'capitalize' }}>
+            {getPageTitle()}
+          </div>
         </div>
         {/* Right side: on Windows or wide screens show full nav here; otherwise leave it blank */}
   <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginRight: 16 }}>
           {/* Topbar: keep only notifications and profile avatar */}
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginRight: 6 }}>
-            {/* Quick search: input nested inside a bordered container that expands downward and displays results inside it */}
-            <div ref={searchRef} style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                width: searchBarWidth,
-                transition: 'width 0.22s ease',
-                borderRadius: 8,
-                background: 'var(--bg-drawer)',
-                border: '1px solid var(--border-main)',
-                boxShadow: showSearch ? '0 6px 18px rgba(0,0,0,0.18)' : 'none',
-                padding: '4px 6px'
-              }}>
-                <input
-                  value={searchTerm}
-                  onChange={(e) => { const v = e.target.value; setSearchTerm(v); if (v && v.trim().length >= 1) { setShowSearch(true); setSearchLoading(true); } }}
-                  onFocus={() => { setIsSearchFocused(true); if (!searchTerm || !searchTerm.trim()) { const hist = loadHistory(); if (hist && hist.length) { setSearchResults(hist); setShowSearch(true); } } else if (searchResults.length) setShowSearch(true); }}
-                  onBlur={() => { setIsSearchFocused(false); /* dropdown closing handled by outside click effect */ }}
-                  onKeyDown={onSearchKey}
-                  placeholder="Search services, products, users"
-                  aria-label="Search"
-                  style={{ height: 24, padding: '4px 6px', borderRadius: 6, border: 'none', background: 'transparent', color: 'var(--text-main)', width: '100%', outline: 'none', fontSize: 13 }}
-                />
+            {/* Quick search: desktop only (hidden on mobile) */}
+            {viewportWidth >= 900 && (
+              <div ref={searchRef} style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  width: searchBarWidth,
+                  transition: 'width 0.22s ease',
+                  borderRadius: 8,
+                  background: 'var(--bg-drawer, rgba(35,35,35,0.95))',
+                  border: '1px solid ' + fadedGold,
+                  boxShadow: showSearch ? '0 6px 18px rgba(0,0,0,0.18)' : 'none',
+                  padding: '4px 6px'
+                }}>
+                    <input
+                      className="hh-search-input"
+                      value={searchTerm}
+                      onChange={(e) => { const v = e.target.value; setSearchTerm(v); if (v && v.trim().length >= 1) { setShowSearch(true); setSearchLoading(true); } }}
+                      onFocus={() => { setIsSearchFocused(true); if (!searchTerm || !searchTerm.trim()) { const hist = loadHistory(); if (hist && hist.length) { setSearchResults(hist); setShowSearch(true); } } else if (searchResults.length) setShowSearch(true); }}
+                      onBlur={() => { setIsSearchFocused(false); /* dropdown closing handled by outside click effect */ }}
+                      onKeyDown={onSearchKey}
+                      placeholder={searchPlaceholder}
+                      aria-label="Search"
+                      style={{ height: 24, padding: '4px 6px', borderRadius: 6, border: 'none', background: 'transparent', color: 'white', width: '100%', outline: 'none', fontSize: 13 }}
+                    />
+                </div>
+
+                {/* Absolutely positioned results dropdown below the searchbar so the input remains visible */}
+                <div style={{
+                  position: 'absolute',
+                  top: '100%',
+                  left: 0,
+                  marginTop: 8,
+                  width: searchBarWidth,
+                  zIndex: 1402,
+                  borderRadius: 8,
+                  background: 'var(--bg-drawer, rgba(35,35,35,0.95))',
+                  border: '1px solid ' + fadedGold,
+                  boxShadow: '0 10px 30px rgba(0,0,0,0.5)',
+                  overflow: 'hidden',
+                  maxHeight: (showSearch ? Math.min(320, 56 + (Array.isArray(searchResults) ? searchResults.length * 56 : 0)) : 0),
+                  transition: 'max-height 0.18s ease, opacity 0.12s ease',
+                  opacity: (showSearch ? 1 : 0),
+                  overflowY: 'auto'
+                }}>
+                  {showSearch && searchLoading && (
+                    <div style={{ padding: 10, color: 'var(--muted)' }}>Searching…</div>
+                  )}
+
+                    {showSearch && !searchLoading && searchResults.map((r, idx) => (
+                    <button type="button" className="hh-search-result" key={`${r.type}-${r.id}-${idx}`} onMouseDown={(e) => { e.preventDefault(); }} onClick={() => {
+                      setShowSearch(false);
+                      setSearchTerm('');
+                      // Navigate to the collection list page and include the item id as a query param
+                      if (r.type === 'product') safeNavigate(`/products?id=${encodeURIComponent(r.id)}`);
+                      else if (r.type === 'service') safeNavigate(`/services?id=${encodeURIComponent(r.id)}`);
+                      else if (r.type === 'user') safeNavigate(`/users?id=${encodeURIComponent(r.id)}`);
+                    }} style={{ display: 'flex', gap: 8, alignItems: 'center', width: '100%', padding: '10px 12px', background: searchSelected === idx ? 'rgba(202,169,10,0.08)' : 'transparent', border: 'none', textAlign: 'left', color: 'white', cursor: 'pointer' }} onMouseEnter={() => setSearchSelected(idx)} onMouseLeave={() => setSearchSelected(-1)}>
+                      <div style={{ width: 8 }} />
+                      <div style={{ display: 'flex', flexDirection: 'column' }}>
+                        <div style={{ fontWeight: 700, color: '#ffd14d' }}>{renderHighlighted(r.label)}</div>
+                        <div style={{ fontSize: 12, color: 'var(--muted)' }}>{r.type}</div>
+                      </div>
+                    </button>
+                  ))}
+
+                  {showSearch && !searchLoading && searchResults.length === 0 && (
+                    <div style={{ padding: 10, color: 'var(--muted)' }}>No results</div>
+                  )}
+                </div>
               </div>
-
-              {/* Absolutely positioned results dropdown below the searchbar so the input remains visible */}
-              <div style={{
-                position: 'absolute',
-                top: '100%',
-                left: 0,
-                marginTop: 8,
-                width: searchBarWidth,
-                zIndex: 1402,
-                borderRadius: 8,
-                background: 'var(--bg-drawer)',
-                border: '1px solid #caa90a',
-                boxShadow: '0 10px 30px rgba(0,0,0,0.5)',
-                overflow: 'hidden',
-                maxHeight: (showSearch ? Math.min(320, 56 + (Array.isArray(searchResults) ? searchResults.length * 56 : 0)) : 0),
-                transition: 'max-height 0.18s ease, opacity 0.12s ease',
-                opacity: (showSearch ? 1 : 0),
-                overflowY: 'auto'
-              }}>
-                {showSearch && searchLoading && (
-                  <div style={{ padding: 10, color: 'var(--muted)' }}>Searching…</div>
-                )}
-
-                {showSearch && !searchLoading && searchResults.map((r, idx) => (
-                  <button type="button" key={`${r.type}-${r.id}-${idx}`} onMouseDown={(e) => { e.preventDefault(); }} onClick={() => {
-                    setShowSearch(false);
-                    setSearchTerm('');
-                    // Navigate to the collection list page and include the item id as a query param
-                    if (r.type === 'product') safeNavigate(`/products?id=${encodeURIComponent(r.id)}`);
-                    else if (r.type === 'service') safeNavigate(`/services?id=${encodeURIComponent(r.id)}`);
-                    else if (r.type === 'user') safeNavigate(`/users?id=${encodeURIComponent(r.id)}`);
-                  }} style={{ display: 'flex', gap: 8, alignItems: 'center', width: '100%', padding: '10px 12px', background: searchSelected === idx ? 'rgba(202,169,10,0.08)' : 'transparent', border: 'none', textAlign: 'left', color: 'var(--text-main)', cursor: 'pointer' }} onMouseEnter={() => setSearchSelected(idx)} onMouseLeave={() => setSearchSelected(-1)}>
-                    <div style={{ width: 8 }} />
-                    <div style={{ display: 'flex', flexDirection: 'column' }}>
-                      <div style={{ fontWeight: 700, color: '#ffd14d' }}>{renderHighlighted(r.label)}</div>
-                      <div style={{ fontSize: 12, color: 'var(--muted)' }}>{r.type}</div>
-                    </div>
-                  </button>
-                ))}
-
-                {showSearch && !searchLoading && searchResults.length === 0 && (
-                  <div style={{ padding: 10, color: 'var(--muted)' }}>No results</div>
-                )}
-              </div>
-            </div>
+            )}
             <button onClick={() => { safeNavigate('/notifications'); setDrawerOpen(false); }} title="Notifications" style={{ background: 'none', border: 'none', cursor: 'pointer', position: 'relative', padding: 6 }}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden>
-                <path d="M15 17h5l-1.405-1.405A2.032 2.032 0 0 1 18 14.158V11a6 6 0 0 0-5-5.917V4a1 1 0 1 0-2 0v1.083A6 6 0 0 0 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5" stroke="var(--icon-main)" strokeWidth="1.4" fill="none" />
+                <path d="M15 17h5l-1.405-1.405A2.032 2.032 0 0 1 18 14.158V11a6 6 0 0 0-5-5.917V4a1 1 0 1 0-2 0v1.083A6 6 0 0 0 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5" stroke="currentColor" strokeWidth="1.4" fill="none" />
               </svg>
               {hasNewNotifications && (
                 <span style={{ position: 'absolute', right: 2, top: 2, width: 10, height: 10, borderRadius: 10, background: 'var(--danger, #d32f2f)', boxShadow: '0 0 0 2px rgba(0,0,0,0.06)' }} />
@@ -753,19 +902,19 @@ useEffect(() => {
             <button onClick={() => { if (typeof setDarkMode === 'function') setDarkMode(!darkMode); }} title={darkMode ? 'Switch to light mode' : 'Switch to dark mode'} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 6, display: 'flex', alignItems: 'center' }} aria-label="Toggle dark mode">
               {darkMode ? (
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden>
-                  <path d="M12 3v2" stroke="var(--icon-main)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-                  <path d="M12 19v2" stroke="var(--icon-main)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-                  <path d="M4.22 4.22l1.42 1.42" stroke="var(--icon-main)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-                  <path d="M18.36 18.36l1.42 1.42" stroke="var(--icon-main)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-                  <path d="M1 12h2" stroke="var(--icon-main)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-                  <path d="M21 12h2" stroke="var(--icon-main)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-                  <path d="M4.22 19.78l1.42-1.42" stroke="var(--icon-main)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-                  <path d="M18.36 5.64l1.42-1.42" stroke="var(--icon-main)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-                  <circle cx="12" cy="12" r="3" stroke="var(--icon-main)" strokeWidth="1.6" fill="var(--bg-drawer)" />
+                  <path d="M12 3v2" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                  <path d="M12 19v2" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                  <path d="M4.22 4.22l1.42 1.42" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                  <path d="M18.36 18.36l1.42 1.42" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                  <path d="M1 12h2" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                  <path d="M21 12h2" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                  <path d="M4.22 19.78l1.42-1.42" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                  <path d="M18.36 5.64l1.42-1.42" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                  <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.6" fill="var(--bg-drawer)" />
                 </svg>
-              ) : (
+                ) : (
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden>
-                  <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" stroke="var(--icon-main)" strokeWidth="1.4" fill="none" />
+                  <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" stroke="currentColor" strokeWidth="1.4" fill="none" />
                 </svg>
               )}
             </button>
@@ -781,77 +930,140 @@ useEffect(() => {
                 <div
                   title={fullName || 'Profile'}
                   aria-label={fullName || 'Profile'}
-                  style={{ width: 26, height: 26, borderRadius: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--border-main)', color: 'var(--text-main)', fontSize: 12, fontWeight: 700, border: '1px solid var(--border-main)' }}
+                  style={{ width: 26, height: 26, borderRadius: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'transparent', color: 'currentColor', fontSize: 12, fontWeight: 700, border: '1px solid ' + fadedGold }}
                 >
                   {getInitials(fullName)}
                 </div>
               </button>
 
               <button onClick={() => safeNavigate('/account-settings')} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', textAlign: 'left' }} title={fullName} aria-label={fullName}>
-                <span style={{ color: 'var(--text-main)', fontWeight: 400, fontSize: 14, maxWidth: 220, display: 'inline-block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{nameToDisplay}</span>
+                {viewportWidth >= 900 && (
+                  <span style={{ color: 'currentColor', fontWeight: 400, fontSize: 14, maxWidth: 220, display: 'inline-block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{nameToDisplay}</span>
+                )}
               </button>
             </div>
           </div>
         </div>
       </div>
-      {/* Drawer overlay */}
-      {drawerOpen && (
-        <div onClick={() => setDrawerOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.25)", zIndex: 1200, transition: "opacity 0.3s" }} />
-      )}
-      {/* Drawer */}
-      <div
-        className="admin-drawer"
-        id="admin-drawer"
-        style={{
-          position: "fixed",
-          top: 56,
-          left: 0,
-          transform: drawerOpen ? 'translateX(0)' : 'translateX(-110%)',
-          width: computedDrawerWidth,
-          maxWidth: '100%',
-          minWidth: '180px',
-          height: "calc(100vh - 56px)",
-          background: "var(--bg-drawer)",
-          borderRight: "2px solid var(--border-main)",
-          boxShadow: drawerOpen ? (darkMode ? "2px 0 16px #0008" : "2px 0 16px rgba(255,215,0,0.2)") : "none",
-          zIndex: 1300,
-          transition: "transform 0.32s cubic-bezier(.4,0,.2,1)",
-          display: "flex",
-          flexDirection: "column",
-          willChange: "transform"
-        }}
-      >
-        <span style={{ marginLeft: 24, fontWeight: "var(--font-weight-main)", fontSize: 18, color: "var(--text-main)", display: "inline-block", marginBottom: 12 }}>Hair House</span>
+      {/* Drawer + overlay rendered into document.body via portal so it's not affected by page transforms/scrolling */}
+      {typeof document !== 'undefined' && createPortal(
+        <>
+          {drawerOpen && (
+            <div onClick={() => setDrawerOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.25)", zIndex: 1200, transition: "opacity 0.3s" }} />
+          )}
+          <div
+            className="admin-drawer"
+            id="admin-drawer"
+            style={{
+              position: "fixed",
+              top: 0,
+              left: 0,
+              transform: (isWide || drawerOpen) ? 'translateX(0)' : 'translateX(-110%)',
+              width: computedDrawerWidth,
+              maxWidth: '100%',
+              minWidth: (isWide && denseSidebar) ? desktopDenseWidth : '180px',
+              height: "100vh",
+              paddingTop: 56,
+              background: "var(--bg-drawer, rgba(35,35,35,0.95))",
+              borderRight: "2px solid var(--border-faint, rgba(201,184,106,0.22))",
+              color: 'white',
+              fontFamily: 'sans-serif',
+              boxShadow: (isWide || drawerOpen) ? (darkMode ? "2px 0 16px #0008" : "2px 0 16px rgba(255,215,0,0.2)") : "none",
+              zIndex: 1301,
+              transition: "transform 0.32s cubic-bezier(.4,0,.2,1)",
+              display: "flex",
+              flexDirection: "column",
+              willChange: "transform"
+            }}
+          >
+        {/* Dense-toggle button (absolute) */}
+        <button onClick={() => setDenseSidebar(s => !s)} title={denseSidebar ? 'Expand sidebar' : 'Compact sidebar'} style={{ position: 'absolute', right: 10, top: 12, width: 36, height: 36, borderRadius: 8, background: 'transparent', border: '1px solid rgba(255,255,255,0.04)', color: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }} aria-label="Toggle dense sidebar">
+          {denseSidebar ? (
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden>
+              <path d="M9 6l6 6-6 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          ) : (
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden>
+              <path d="M15 6l-6 6 6 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          )}
+        </button>
+        {!(isWide && denseSidebar && !drawerOpen) && (
+          <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, padding: '10px 0 8px' }}>
+            <img
+              src={(process.env.PUBLIC_URL || '') + '/LogoH.png'}
+              alt="Hair House Logo"
+              style={{ width: 56, height: 'auto', objectFit: 'contain', display: 'block' }}
+            />
+            <div style={{ fontWeight: "var(--font-weight-main)", fontSize: 14, color: 'inherit', lineHeight: 1 }}>{'Hair House Salon'}</div>
+            <div aria-hidden style={{ width: '86%', height: 1, background: 'rgba(255,255,255,0.12)', borderRadius: 1, margin: '8px auto 6px' }} />
+          </div>
+        )}
         {/* Render primary navigation from topbar here (vertical list) */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, padding: '0 8px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, padding: denseSidebar && isWide ? '8px 6px' : '0 8px', alignItems: denseSidebar && isWide ? 'center' : 'stretch' }}>
           {navButtons.map((btn) => {
             const active = isActivePath(btn.path);
+            if (isWide && denseSidebar) {
+              // dense: icon-only vertical buttons with divider and active accent
+              return (
+                <div key={btn.label} style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                  <button
+                    onClick={() => { safeNavigate(btn.path); /* close overlay if it was opened */ if (drawerOpen) setDrawerOpen(false); }}
+                    title={btn.label}
+                    style={{
+                      width: 56,
+                      height: 56,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      borderRadius: 10,
+                      background: active ? 'rgba(255,215,0,0.08)' : 'transparent',
+                      border: 'none',
+                      color: active ? 'var(--text-main)' : 'inherit',
+                      cursor: 'pointer',
+                      position: 'relative'
+                    }}
+                  >
+                    <div style={{ width: 24, height: 24, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      {navIcons[btn.label] ? navIcons[btn.label](18) : <span style={{ fontWeight: 700 }}>{btn.label[0]}</span>}
+                    </div>
+                    {active && (
+                      <div style={{ position: 'absolute', left: -6, top: 12, width: 4, height: 32, borderRadius: 4, background: '#ffd14d' }} />
+                    )}
+                  </button>
+                  <div style={{ width: 28, height: 1, background: 'rgba(255,255,255,0.06)', marginTop: 8, borderRadius: 1 }} />
+                </div>
+              );
+            }
+
+            // regular (labelled) drawer entry for mobile or expanded desktop
             return (
               <button
                 key={btn.label}
-                onClick={() => { navigate(btn.path); setDrawerOpen(false); }}
+                onClick={() => { safeNavigate(btn.path); if (drawerOpen || !isWide) setDrawerOpen(false); }}
                 style={{
                   ...drawerBtnStyle,
                   display: 'flex',
                   alignItems: 'center',
                   gap: 10,
                   justifyContent: 'flex-start',
-                  ...(active ? { color: activeLinkStyle.color, fontWeight: activeLinkStyle.fontWeight } : {})
+                  ...(active ? { color: activeLinkStyle.color, fontWeight: activeLinkStyle.fontWeight, background: 'rgba(255,255,255,0.02)' } : {})
                 }}
               >
-                <span style={{ width: 18, display: 'inline-block' }} />
+                <span style={{ width: 22, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>{navIcons[btn.label] ? navIcons[btn.label](16) : null}</span>
                 {btn.label}
               </button>
             );
           })}
         </div>
-        <div style={{ marginTop: "auto", padding: "1rem 1rem 1.25rem 1rem", borderTop: "1px solid var(--border-main)", display: "flex", alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+        {!(isWide && denseSidebar && !drawerOpen) && (
+          <div style={{ marginTop: "auto", padding: "1rem 1rem 1.25rem 1rem", borderTop: "1px solid var(--border-faint, rgba(201,184,106,0.22))", display: "flex", alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               {/* Use a compact initials avatar in the drawer footer (deterministic, no external images) */}
-              <div style={{ width: 28, height: 28, borderRadius: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--border-main)', background: 'var(--border-main)', color: 'var(--text-main)', fontWeight: 700, fontSize: 12 }}>{getInitials(fullName)}</div>
+                <div style={{ width: 28, height: 28, borderRadius: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--border-main)', background: 'var(--border-main)', color: 'inherit', fontWeight: 700, fontSize: 12 }}>{getInitials(fullName)}</div>
               <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-                <div style={{ fontWeight: 400, fontSize: 14, color: 'var(--text-main)', maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={fullName}>{nameToDisplay}</div>
-                  <div style={{ fontWeight: 400, fontSize: 12, color: 'var(--muted)', maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={fullEmail}>{emailToDisplay}</div>
+                <div style={{ fontWeight: 400, fontSize: 14, color: 'inherit', maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={fullName}>{nameToDisplay}</div>
+                  <div style={{ fontWeight: 400, fontSize: 12, color: 'inherit', maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={fullEmail}>{emailToDisplay}</div>
               </div>
           </div>
 
@@ -860,7 +1072,7 @@ useEffect(() => {
               onClick={() => { setDrawerOpen(false); if (onLogout) onLogout(); }}
               style={{
                 background: 'transparent',
-                color: 'var(--logout-color, #d32f2f)',
+                  color: 'white',
                 border: '1px solid var(--logout-color, #d32f2f)',
                 padding: '4px 10px',
                 borderRadius: 6,
@@ -876,8 +1088,12 @@ useEffect(() => {
               Logout
             </button>
           </div>
-        </div>
-      </div>
+          </div>
+        )}
+          {/* Duplicate footer removed; single footer above is used for account + logout */}
+          </div>
+        </>
+      , document.body)}
     </>
   );
 };

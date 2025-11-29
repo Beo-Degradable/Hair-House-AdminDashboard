@@ -4,7 +4,7 @@ import AddPromotionModal from './AddPromotionModal';
 import UpdatePromotionModal from './UpdatePromotionModal';
 import { formatCurrency } from '../../../utils/formatters';
 import { db } from '../../../firebase';
-import { collection, onSnapshot, query, where, orderBy } from 'firebase/firestore';
+import { collection, onSnapshot, query, where, orderBy, updateDoc, doc } from 'firebase/firestore';
 
 // Promotions page with Branch selector and Promo-type filter dropdown
 export default function PromotionsPage() {
@@ -42,6 +42,28 @@ export default function PromotionsPage() {
           return true;
         });
         setPromotions(filtered);
+
+        // Auto-expire promotions whose end date is today or earlier
+        try {
+          const now = new Date();
+          const nowMid = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+          rows.forEach(async (r) => {
+            try {
+              if (!r.endDate) return;
+              const e = r.endDate?.toDate ? r.endDate.toDate() : (r.endDate instanceof Date ? r.endDate : new Date(r.endDate));
+              if (isNaN(e.getTime())) return;
+              const endMid = new Date(e.getFullYear(), e.getMonth(), e.getDate()).getTime();
+              if (nowMid >= endMid && String((r.status || '')).toLowerCase() !== 'expired') {
+                // mark expired
+                await updateDoc(doc(db, 'promotions', r.id), { status: 'expired' });
+              }
+            } catch (err) {
+              console.warn('failed to auto-expire promotion', r.id, err);
+            }
+          });
+        } catch (err) {
+          console.warn('auto-expire check failed', err);
+        }
         setLoading(false);
       }, (e) => { setError(e.message || String(e)); setLoading(false); });
       return () => unsub();

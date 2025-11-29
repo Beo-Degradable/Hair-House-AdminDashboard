@@ -21,6 +21,7 @@ import AboutPage from "./pages/AdminSide/AboutPage";
 import AdminAppointmentPage from "./pages/AdminSide/AppointmentPage/AppointmentPage";
 import ProductPage from "./pages/AdminSide/ProductPage/ProductPage";
 import ServicePage from "./pages/AdminSide/ServicePage/ServicePage";
+import ServiceTypePage from "./pages/AdminSide/ServicePage/ServiceTypePage";
 import PromotionsPage from "./pages/AdminSide/PromotionsPage/PromotionsPage";
 import InventoryPage from "./pages/AdminSide/InventoryPage/InventoryPage";
 import UsersPage from "./pages/AdminSide/UsersPage/UsersPage";
@@ -61,6 +62,7 @@ function App() {
           <Route path="/appointments" element={<AdminDashboard onLogout={() => setRole("") } page={<AdminAppointmentPage />} />} />
           <Route path="/products" element={<AdminDashboard onLogout={() => setRole("")} page={<ProductPage />} />} />
           <Route path="/services" element={<AdminDashboard onLogout={() => setRole("")} page={<ServicePage />} />} />
+          <Route path="/services/type/:type" element={<AdminDashboard onLogout={() => setRole("")} page={<ServiceTypePage />} />} />
           <Route path="/promotions" element={<AdminDashboard onLogout={() => setRole("")} page={<PromotionsPage />} />} />
           <Route path="/inventory" element={<AdminDashboard onLogout={() => setRole("")} page={<InventoryPage />} />} />
           <Route path="/users" element={<AdminDashboard onLogout={() => setRole("")} page={<UsersPage />} />} />

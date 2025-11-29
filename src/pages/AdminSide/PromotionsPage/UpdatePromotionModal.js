@@ -17,7 +17,6 @@ export default function UpdatePromotionModal({ open, data, onClose, fieldWidths 
   const [discountValue, setDiscountValue] = useState('');
   const [start, setStart] = useState('');
   const [end, setEnd] = useState('');
-  const [status, setStatus] = useState('active');
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -42,7 +41,6 @@ export default function UpdatePromotionModal({ open, data, onClose, fieldWidths 
     const e = data.endDate?.toDate ? data.endDate.toDate() : (data.endDate instanceof Date ? data.endDate : (data.endDate ? new Date(data.endDate) : null));
     setStart(s ? formatDateInput(s) : '');
     setEnd(e ? formatDateInput(e) : '');
-    setStatus(data.status || 'active');
   }, [open, data]);
 
   const formatDateInput = (d) => {
@@ -92,7 +90,6 @@ export default function UpdatePromotionModal({ open, data, onClose, fieldWidths 
         discountValue: dv !== null ? dv : null,
         startDate,
         endDate,
-        status,
       };
       await updateDoc(doc(db, 'promotions', data.id), updates);
       try { await logHistory({ action: 'update', collection: 'promotions', docId: data.id, before: data, after: updates }); } catch {}
@@ -156,12 +153,9 @@ export default function UpdatePromotionModal({ open, data, onClose, fieldWidths 
           <label style={{ fontSize: 13, flex: fieldWidths.branch ? '0 0 auto' : 1, width: fieldWidths.branch || undefined }}>Branch
             <input value={branch} onChange={e => setBranch(e.target.value)} style={{ ...inputStyle, width: '90%' }} />
           </label>
-          <label style={{ fontSize: 13, flex: fieldWidths.status ? '0 0 auto' : 1, width: fieldWidths.status || undefined }}>Status
-            <select value={status} onChange={e => setStatus(e.target.value)} style={{ ...inputStyle, width: '90%' }}>
-              <option value='active'>Active</option>
-              <option value='expired'>Expired</option>
-            </select>
-          </label>
+          <div style={{ fontSize: 13, flex: fieldWidths.status ? '0 0 auto' : 1, width: fieldWidths.status || undefined, display: 'flex', alignItems: 'center' }}>
+            <div style={{ color: 'var(--muted)', fontSize: 13 }}>Status: <span style={{ fontWeight: 700, color: (data && String(data.status || '').toLowerCase() === 'expired') ? '#d32f2f' : ((data && String(data.status || '').toLowerCase() === 'active') ? '#2e7d32' : 'var(--text-main)') }}>{data?.status || 'active'}</span></div>
+          </div>
         </div>
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 6 }}>
           <button type='button' onClick={onClose} style={btnMinorStyle} disabled={saving}>Cancel</button>
