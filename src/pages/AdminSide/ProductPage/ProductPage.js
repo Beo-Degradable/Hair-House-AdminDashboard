@@ -24,15 +24,16 @@ const ProductCard = ({ p, cardFontSize = 14 }) => {
 
 const localStyles = `
 .hh-product-page {}
+.hh-card { background: var(--bg-drawer); border: 1px solid var(--border-main); border-radius: 10px; padding: 16px; }
 .hh-product-header { text-align: left; }
 .hh-product-header h2 { margin: 0; }
 .hh-product-search { display: flex; gap: 12px; align-items: center; margin-bottom: 16px; }
-.hh-product-search input { padding: 8px; border-radius: 8px; border: 1px solid var(--border-main); width: 360px; max-width: 100%; }
+.hh-product-search input { padding: 8px; border-radius: 8px; border: 1px solid var(--border-main); width: 360px; max-width: 100%; background: var(--bg-surface); color: var(--text-main); }
 .hh-product-table { width: 100%; border-collapse: collapse; margin-top: 12px; }
 .hh-product-table th, .hh-product-table td { padding: 10px 12px; border-bottom: 1px solid var(--border-main); text-align: left; }
 .hh-product-table th { background: transparent; color: var(--muted); font-weight: 600; }
 .hh-product-table tr:hover { background: rgba(0,0,0,0.02); }
-.hh-product-no-results { color: #6b7280; padding: 24px 0; }
+.hh-product-no-results { color: var(--muted); padding: 24px 0; }
 `;
 
 const paddingToStyle = (pad) => {
@@ -111,50 +112,48 @@ const ProductPage = ({
     <>
       <style>{localStyles}</style>
       <div className="hh-product-page" style={{ padding: containerPadding }}>
-        <div className="hh-product-header" style={{ ...paddingToStyle(headerPadSource) }}>
-          <h2 style={{ fontSize: typeof headerFontSize === 'number' ? `${headerFontSize}px` : headerFontSize }}>Products</h2>
-        </div>
-
-        <div className="hh-product-search">
-          <input value={query} onChange={(e) => setQuery(sanitizeForSearch(e.target.value))} placeholder="Search products" />
-          <div style={{ marginLeft: 'auto', color: 'var(--muted)', fontSize: 13 }} />
-          {loading ? <div style={{ marginLeft: 12 }}>Loading…</div> : null}
-        </div>
-
-        {(!loading && filtered.length === 0) ? (
-          <div className="hh-product-no-results">No products found.</div>
-        ) : (
-          <div style={{ overflowX: 'auto' }}>
-            <table className="hh-product-table">
-              <thead>
-                <tr>
-                  <th style={{ minWidth: 220 }}>Name</th>
-                  <th style={{ width: 160 }}>Brand</th>
-                  <th style={{ width: 160 }}>Category</th>
-                  <th style={{ width: 120 }}>Unit</th>
-                  <th style={{ width: 120 }}>Price</th>
-                  <th style={{ width: 120 }}>Quantity</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map(p => (
-                  <tr
-                    key={p.id}
-                    ref={(el) => { if (el) rowRefs.current.set(p.id, el); }}
-                    style={highlightedId === p.id ? { background: 'rgba(202,169,10,0.12)', boxShadow: 'inset 4px 0 0 0 rgba(202,169,10,0.9)' } : {}}
-                  >
-                    <td>{p.name}</td>
-                    <td>{p.brand || p.manufacturer || '-'}</td>
-                    <td>{p.category || p.type || '-'}</td>
-                    <td>{p.unit || p.uom || '-'}</td>
-                    <td>{typeof p.price === 'number' ? `₱${p.price.toFixed(2)}` : (p.price ? `₱${Number(p.price).toFixed(2)}` : '₱0.00')}</td>
-                    <td>{p.quantity ?? p.qty ?? 0}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+        <div className="hh-card">
+          <div className="hh-product-search">
+            <input value={query} onChange={(e) => setQuery(sanitizeForSearch(e.target.value))} placeholder="Search products" />
+            <div style={{ marginLeft: 'auto', color: 'var(--muted)', fontSize: 13 }} />
+            {loading ? <div style={{ marginLeft: 12 }}>Loading…</div> : null}
           </div>
-        )}
+
+          {(!loading && filtered.length === 0) ? (
+            <div className="hh-product-no-results">No products found.</div>
+          ) : (
+            <div style={{ overflowX: 'auto' }}>
+              <table className="hh-product-table">
+                <thead>
+                  <tr>
+                    <th style={{ minWidth: 220 }}>Name</th>
+                    <th style={{ width: 160 }}>Brand</th>
+                    <th style={{ width: 160 }}>Category</th>
+                    <th style={{ width: 120 }}>Unit</th>
+                    <th style={{ width: 120 }}>Price</th>
+                    <th style={{ width: 120 }}>Quantity</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.map(p => (
+                    <tr
+                      key={p.id}
+                      ref={(el) => { if (el) rowRefs.current.set(p.id, el); }}
+                      style={highlightedId === p.id ? { background: 'rgba(202,169,10,0.12)', boxShadow: 'inset 4px 0 0 0 rgba(202,169,10,0.9)' } : {}}
+                    >
+                      <td>{p.name}</td>
+                      <td>{p.brand || p.manufacturer || '-'}</td>
+                      <td>{p.category || p.type || '-'}</td>
+                      <td>{p.unit || p.uom || '-'}</td>
+                      <td>{typeof p.price === 'number' ? `₱${p.price.toFixed(2)}` : (p.price ? `₱${Number(p.price).toFixed(2)}` : '₱0.00')}</td>
+                      <td>{p.quantity ?? p.qty ?? 0}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
       </div>
     </>
   );

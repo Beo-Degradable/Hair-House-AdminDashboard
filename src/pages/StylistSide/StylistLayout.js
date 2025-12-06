@@ -25,14 +25,16 @@ const StylistLayout = ({ onLogout }) => {
         '--font-weight-main': 600,
       }
     : {
-        '--bg-main': '#fffbe6',
-        '--bg-drawer': '#fff',
-        '--text-main': '#181818',
-        '--text-secondary': '#FFD700',
-        '--border-main': '#FFD700',
-        '--icon-main': '#181818',
+        '--bg-main': '#F3F4F6',
+        '--bg-drawer': '#F7F8F9',
+        '--bg-surface': '#F6F7F8',
+        '--text-main': '#111827',
+        '--text-secondary': '#6B7280',
+        '--border-main': 'rgba(16,24,32,0.04)',
+        '--border-faint': 'rgba(16,24,32,0.02)',
+        '--icon-main': '#374151',
         '--btn-bg': 'none',
-        '--btn-hover': '#f5e9b7',
+        '--btn-hover': '#F5F6F7',
         '--logout-bg': '#d32f2f',
         '--logout-color': '#fff',
         '--font-weight-main': 700,
@@ -45,7 +47,7 @@ const StylistLayout = ({ onLogout }) => {
       preferences: {},
       savePreferences: async () => {},
     }}>
-      <div style={{ minHeight: '100vh', width: '100%', background: 'var(--bg-main, #fffbe6)', ...theme }}>
+      <div style={{ minHeight: '100vh', width: '100%', background: 'var(--bg-main)', ...theme }}>
         <TopBar onLogout={onLogout} darkMode={darkMode} setDarkMode={setDarkMode} settingsOpen={settingsOpen} setSettingsOpen={setSettingsOpen} />
         <main style={{ marginTop: 56 }}>
           <Outlet />

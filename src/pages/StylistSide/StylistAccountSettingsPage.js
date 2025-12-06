@@ -61,7 +61,7 @@ export default function StylistAccountSettingsPage() {
       <div style={{ display: 'grid', gap: 24 }}>
         <section>
           <h3 style={{ margin: '0 0 8px' }}>Email</h3>
-          <input value={email} onChange={e => setEmail(e.target.value)} placeholder="Email" type="email" style={{ width: '100%', padding: 8, borderRadius: 6, border: '1px solid var(--border-main,#ddd)', background: 'var(--bg-drawer,#fff)' }} />
+          <input value={email} onChange={e => setEmail(e.target.value)} placeholder="Email" type="email" style={{ width: '100%', padding: 8, borderRadius: 6, border: '1px solid var(--border-main,#ddd)', background: 'var(--bg-drawer)' }} />
           <div style={{ marginTop: 8, display: 'flex', gap: 12 }}>
             <button onClick={saveEmail} disabled={savingEmail} style={{ padding: '8px 14px', borderRadius: 6, border: '1px solid var(--border-main,#ddd)', background: 'var(--text-main,#222)', color: 'white', cursor: 'pointer' }}>{savingEmail ? 'Saving…' : 'Save Email'}</button>
             {errorEmail && <div style={{ color: 'var(--danger,#d32f2f)', fontSize: 12 }}>{errorEmail}</div>}
@@ -70,8 +70,8 @@ export default function StylistAccountSettingsPage() {
         </section>
         <section>
           <h3 style={{ margin: '0 0 8px' }}>Change Password</h3>
-          <input value={pw} onChange={e => setPw(e.target.value)} placeholder="New password" type="password" style={{ width: '100%', padding: 8, borderRadius: 6, border: '1px solid var(--border-main,#ddd)', background: 'var(--bg-drawer,#fff)', marginBottom: 8 }} />
-          <input value={pw2} onChange={e => setPw2(e.target.value)} placeholder="Confirm password" type="password" style={{ width: '100%', padding: 8, borderRadius: 6, border: '1px solid var(--border-main,#ddd)', background: 'var(--bg-drawer,#fff)' }} />
+          <input value={pw} onChange={e => setPw(e.target.value)} placeholder="New password" type="password" style={{ width: '100%', padding: 8, borderRadius: 6, border: '1px solid var(--border-main,#ddd)', background: 'var(--bg-drawer)', marginBottom: 8 }} />
+          <input value={pw2} onChange={e => setPw2(e.target.value)} placeholder="Confirm password" type="password" style={{ width: '100%', padding: 8, borderRadius: 6, border: '1px solid var(--border-main,#ddd)', background: 'var(--bg-drawer)' }} />
           <div style={{ marginTop: 8, display: 'flex', gap: 12 }}>
             <button onClick={savePassword} disabled={savingPw} style={{ padding: '8px 14px', borderRadius: 6, border: '1px solid var(--border-main,#ddd)', background: 'var(--text-main,#222)', color: 'white', cursor: 'pointer' }}>{savingPw ? 'Saving…' : 'Update Password'}</button>
             {errorPw && <div style={{ color: 'var(--danger,#d32f2f)', fontSize: 12 }}>{errorPw}</div>}

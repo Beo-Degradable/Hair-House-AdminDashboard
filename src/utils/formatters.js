@@ -14,4 +14,26 @@ export function formatCurrency(n) {
   return '₱' + n.toFixed(2);
 }
 
+export function formatStatus(status) {
+  if (status == null) return '';
+  const s = String(status).trim();
+  if (!s) return '';
+  // normalize common internal keys by replacing underscores with spaces
+  const low = s.replace(/_/g, ' ').toLowerCase();
+
+  // known mappings
+  const map = {
+    'pending cancel': 'pending cancellation',
+    'pending_cancel': 'pending cancellation',
+    'cancel requested': 'cancellation requested',
+    'cancel_requested': 'cancellation requested',
+    'in progress': 'in progress',
+    'in-progress': 'in progress'
+  };
+  if (map[low]) return map[low];
+
+  // fallback: title case the words
+  return low.split(' ').filter(Boolean).map(w => w[0]?.toUpperCase() + w.slice(1)).join(' ');
+}
+
 export default { timeAgo, formatCurrency };

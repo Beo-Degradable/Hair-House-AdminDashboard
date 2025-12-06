@@ -80,22 +80,22 @@ export default function InventoryHistory({ branchId = null, onClose = null }) {
   };
 
   return (
-    <div style={{ padding: 12, width: '95vw', maxWidth: 980, color: '#fff', background: '#1f1f1f', border: '2px solid #c59b16', borderRadius: 8, boxSizing: 'border-box', maxHeight: '90vh', overflow: 'hidden' }}>
+    <div style={{ padding: 12, width: '95vw', maxWidth: 980, color: 'var(--text-main)', background: 'var(--bg-surface, #1f1f1f)', border: '2px solid var(--accent, #c59b16)', borderRadius: 8, boxSizing: 'border-box', maxHeight: '90vh', overflow: 'hidden' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-        <h3 style={{ margin: 0, color: '#fff' }}>Inventory History</h3>
+        <h3 style={{ margin: 0, color: 'var(--text-main)' }}>Inventory History</h3>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-          <button onClick={() => setFilter(FILTERS.WEEK)} style={{ background: filter === FILTERS.WEEK ? '#c59b16' : 'transparent', color: filter === FILTERS.WEEK ? '#1f1f1f' : '#fff', border: '1px solid #c59b16', padding: '6px 10px', borderRadius: 4 }}>Weekly</button>
-          <button onClick={() => setFilter(FILTERS.MONTH)} style={{ background: filter === FILTERS.MONTH ? '#c59b16' : 'transparent', color: filter === FILTERS.MONTH ? '#1f1f1f' : '#fff', border: '1px solid #c59b16', padding: '6px 10px', borderRadius: 4 }}>Monthly</button>
-          <button onClick={() => setFilter(FILTERS.ALL)} style={{ background: filter === FILTERS.ALL ? '#c59b16' : 'transparent', color: filter === FILTERS.ALL ? '#1f1f1f' : '#fff', border: '1px solid #c59b16', padding: '6px 10px', borderRadius: 4 }}>All</button>
-          {onClose && <button onClick={onClose} style={{ marginLeft: 8, background: 'transparent', color: '#fff', border: '1px solid #c59b16', padding: '6px 10px', borderRadius: 4 }}>Close</button>}
+          <button onClick={() => setFilter(FILTERS.WEEK)} style={{ background: filter === FILTERS.WEEK ? 'var(--accent, #c59b16)' : 'transparent', color: filter === FILTERS.WEEK ? 'var(--accent-contrast, #1f1f1f)' : 'var(--text-main)', border: '1px solid var(--accent, #c59b16)', padding: '6px 10px', borderRadius: 4 }}>Weekly</button>
+          <button onClick={() => setFilter(FILTERS.MONTH)} style={{ background: filter === FILTERS.MONTH ? 'var(--accent, #c59b16)' : 'transparent', color: filter === FILTERS.MONTH ? 'var(--accent-contrast, #1f1f1f)' : 'var(--text-main)', border: '1px solid var(--accent, #c59b16)', padding: '6px 10px', borderRadius: 4 }}>Monthly</button>
+          <button onClick={() => setFilter(FILTERS.ALL)} style={{ background: filter === FILTERS.ALL ? 'var(--accent, #c59b16)' : 'transparent', color: filter === FILTERS.ALL ? 'var(--accent-contrast, #1f1f1f)' : 'var(--text-main)', border: '1px solid var(--accent, #c59b16)', padding: '6px 10px', borderRadius: 4 }}>All</button>
+          {onClose && <button onClick={onClose} style={{ marginLeft: 8, background: 'transparent', color: 'var(--text-main)', border: '1px solid var(--accent, #c59b16)', padding: '6px 10px', borderRadius: 4 }}>Close</button>}
         </div>
       </div>
 
       <div style={{ marginTop: 8, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-        <input placeholder="Search product or reason" value={search} onChange={e => setSearch(e.target.value)} style={{ flex: 1, minWidth: 120, padding: 8, background: 'transparent', border: '1px solid #c59b16', color: '#fff', borderRadius: 4 }} />
+        <input placeholder="Search product or reason" value={search} onChange={e => setSearch(e.target.value)} style={{ flex: 1, minWidth: 120, padding: 8, background: 'transparent', border: '1px solid var(--accent, #c59b16)', color: 'var(--text-main)', borderRadius: 4 }} />
         <div style={{ minWidth: 180, textAlign: 'right' }}>
-          <div style={{ fontSize: 12, color: '#ddd' }}>Total product cost (used):</div>
-          <div style={{ fontWeight: 700, color: '#fff' }}>{formatCurrency(totalProductCost)}</div>
+          <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Total product cost (used):</div>
+          <div style={{ fontWeight: 700, color: 'var(--text-main)' }}>{formatCurrency(totalProductCost)}</div>
         </div>
       </div>
 
@@ -104,12 +104,12 @@ export default function InventoryHistory({ branchId = null, onClose = null }) {
           <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 720 }}>
             <thead>
               <tr>
-                <th style={{ textAlign: 'left', padding: 8, color: '#fff', borderBottom: '2px solid #c59b16' }}>Product</th>
-                <th style={{ textAlign: 'left', padding: 8, color: '#fff', borderBottom: '2px solid #c59b16' }}>Delta</th>
-                <th style={{ textAlign: 'left', padding: 8, color: '#fff', borderBottom: '2px solid #c59b16' }}>Reason</th>
-                <th style={{ textAlign: 'left', padding: 8, color: '#fff', borderBottom: '2px solid #c59b16' }}>Updated By</th>
-                <th style={{ textAlign: 'left', padding: 8, color: '#fff', borderBottom: '2px solid #c59b16' }}>Cost</th>
-                <th style={{ textAlign: 'left', padding: 8, color: '#fff', borderBottom: '2px solid #c59b16' }}>Time</th>
+                <th style={{ textAlign: 'left', padding: 8, color: 'var(--text-main)', borderBottom: '2px solid var(--accent, #c59b16)' }}>Product</th>
+                <th style={{ textAlign: 'left', padding: 8, color: 'var(--text-main)', borderBottom: '2px solid var(--accent, #c59b16)' }}>Delta</th>
+                <th style={{ textAlign: 'left', padding: 8, color: 'var(--text-main)', borderBottom: '2px solid var(--accent, #c59b16)' }}>Reason</th>
+                <th style={{ textAlign: 'left', padding: 8, color: 'var(--text-main)', borderBottom: '2px solid var(--accent, #c59b16)' }}>Updated By</th>
+                <th style={{ textAlign: 'left', padding: 8, color: 'var(--text-main)', borderBottom: '2px solid var(--accent, #c59b16)' }}>Cost</th>
+                <th style={{ textAlign: 'left', padding: 8, color: 'var(--text-main)', borderBottom: '2px solid var(--accent, #c59b16)' }}>Time</th>
               </tr>
             </thead>
             <tbody>
@@ -120,12 +120,12 @@ export default function InventoryHistory({ branchId = null, onClose = null }) {
                 const costForAdj = a.delta < 0 ? (Math.abs(Number(a.delta || 0)) * cost) : 0;
                 return (
                   <tr key={a.id} style={{ borderBottom: '1px solid rgba(197,155,22,0.18)' }}>
-                    <td style={{ padding: 8, color: '#fff', verticalAlign: 'top' }}>{prodName}</td>
-                    <td style={{ padding: 8, color: '#fff', verticalAlign: 'top' }}>{Number(a.delta) > 0 ? `+${a.delta}` : a.delta}</td>
-                    <td style={{ padding: 8, color: '#fff', verticalAlign: 'top' }}>{a.reason}</td>
-                    <td style={{ padding: 8, color: '#fff', verticalAlign: 'top' }}>{(a.createdBy && (a.createdBy.name || a.createdBy.email)) || 'System'}</td>
-                    <td style={{ padding: 8, color: '#fff', verticalAlign: 'top' }}>{formatCurrency(costForAdj)}</td>
-                    <td style={{ padding: 8, color: '#fff', verticalAlign: 'top' }}>{formatTime(a.createdAt)}</td>
+                    <td style={{ padding: 8, color: 'var(--text-main)', verticalAlign: 'top' }}>{prodName}</td>
+                    <td style={{ padding: 8, color: 'var(--text-main)', verticalAlign: 'top' }}>{Number(a.delta) > 0 ? `+${a.delta}` : a.delta}</td>
+                    <td style={{ padding: 8, color: 'var(--text-main)', verticalAlign: 'top' }}>{a.reason}</td>
+                    <td style={{ padding: 8, color: 'var(--text-main)', verticalAlign: 'top' }}>{(a.createdBy && (a.createdBy.name || a.createdBy.email)) || 'System'}</td>
+                    <td style={{ padding: 8, color: 'var(--text-main)', verticalAlign: 'top' }}>{formatCurrency(costForAdj)}</td>
+                    <td style={{ padding: 8, color: 'var(--text-main)', verticalAlign: 'top' }}>{formatTime(a.createdAt)}</td>
                   </tr>
                 );
               })}

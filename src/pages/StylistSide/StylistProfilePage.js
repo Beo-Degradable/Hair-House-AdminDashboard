@@ -72,19 +72,19 @@ export default function StylistProfilePage() {
       <div style={{ display: 'grid', gap: 12 }}>
         <div>
           <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>Email</label>
-          <div style={{ padding: 8, border: '1px solid var(--border-main,#ddd)', borderRadius: 6, background: 'var(--bg-drawer,#fff)' }}>{user?.email || '—'}</div>
+          <div style={{ padding: 8, border: '1px solid var(--border-main,#ddd)', borderRadius: 6, background: 'var(--bg-drawer)' }}>{user?.email || '—'}</div>
         </div>
         <div>
           <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>Display name</label>
-          <input name="displayName" value={form.displayName} onChange={onChange} placeholder="Display name" style={{ width: '100%', padding: 8, borderRadius: 6, border: '1px solid var(--border-main,#ddd)', background: 'var(--bg-drawer,#fff)' }} />
+          <input name="displayName" value={form.displayName} onChange={onChange} placeholder="Display name" style={{ width: '100%', padding: 8, borderRadius: 6, border: '1px solid var(--border-main,#ddd)', background: 'var(--bg-drawer)' }} />
         </div>
         <div>
           <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>Phone</label>
-          <input name="phone" value={form.phone} onChange={onChange} placeholder="Phone" style={{ width: '100%', padding: 8, borderRadius: 6, border: '1px solid var(--border-main,#ddd)', background: 'var(--bg-drawer,#fff)' }} />
+          <input name="phone" value={form.phone} onChange={onChange} placeholder="Phone" style={{ width: '100%', padding: 8, borderRadius: 6, border: '1px solid var(--border-main,#ddd)', background: 'var(--bg-drawer)' }} />
         </div>
         <div>
           <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>Branch</label>
-          <div style={{ padding: 8, border: '1px solid var(--border-main,#ddd)', borderRadius: 6, background: 'var(--bg-drawer,#fff)' }}>{profile?.branchName || profile?.branch || '—'}</div>
+          <div style={{ padding: 8, border: '1px solid var(--border-main,#ddd)', borderRadius: 6, background: 'var(--bg-drawer)' }}>{profile?.branchName || profile?.branch || '—'}</div>
         </div>
       </div>
       <div style={{ marginTop: 16, display: 'flex', gap: 12 }}>

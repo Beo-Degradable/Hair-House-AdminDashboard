@@ -1,5 +1,5 @@
 // Admin dashboard shell: global theme, topbar, KPI/graphs and recent activity layout.
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
 import TopBar from "./TopBar";
@@ -7,11 +7,12 @@ import useAppointments from '../../hooks/useAppointments';
 import useInventory from '../../hooks/useInventory';
 import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
 import { db } from '../../firebase';
-import { formatCurrency } from '../../utils/formatters';
+import { formatCurrency, formatStatus } from '../../utils/formatters';
 // RecentActivityFeed and KPIRow removed per request
 
 
 const AdminDashboard = ({ onLogout, page }) => {
+  const { items, inventoryMap, loading: invLoading } = useInventory();
   const [darkMode, setDarkMode] = useState(() => {
     const stored = localStorage.getItem('darkMode');
     return stored === null ? false : stored === 'true';
@@ -34,18 +35,40 @@ const AdminDashboard = ({ onLogout, page }) => {
         '--font-weight-main': 400,
       }
     : {
-        '--bg-main': '#fffbe6',
-        '--bg-drawer': '#fff',
-        '--text-main': '#181818',
-        '--text-secondary': '#bfa14a',
-        '--border-main': 'rgba(255,215,0,0.18)',
-        '--icon-main': '#181818',
-        '--btn-bg': 'none',
-        '--btn-hover': '#f5e9b7',
-        '--logout-bg': '#d32f2f',
-        '--logout-color': '#fff',
-        '--font-weight-main': 400,
+          '--bg-main': '#F3F4F6',
+          // make drawer/topbar a bit darker in light mode so UI chrome reads clearly
+          '--bg-drawer': '#ECEFF2',
+          '--bg-surface': '#F6F7F8',
+          '--text-main': '#111827',
+          '--text-secondary': '#6B7280',
+          // stronger, darker gold for borders and accents so controls remain visible
+          '--border-main': 'rgba(184,134,11,0.18)',
+          '--border-faint': 'rgba(184,134,11,0.08)',
+          '--accent': '#B8860B',
+          '--accent-weak': 'rgba(184,134,11,0.08)',
+          '--icon-main': '#8B6B00',
+          '--btn-bg': 'none',
+          '--btn-hover': '#ECEFF4',
+          '--logout-bg': '#D32F2F',
+          '--logout-color': '#FFFFFF',
+          '--font-weight-main': 400,
       };
+
+  // Persist darkMode and apply theme variables to the document root so portals
+  // (modals, drawers rendered into document.body) inherit the selected theme.
+  useEffect(() => {
+    try {
+      // write each CSS var to :root
+      Object.entries(theme).forEach(([k, v]) => {
+        if (typeof document !== 'undefined' && document.documentElement && typeof document.documentElement.style.setProperty === 'function') {
+          document.documentElement.style.setProperty(k, v);
+        }
+      });
+    } catch (e) {
+      // ignore
+    }
+    try { localStorage.setItem('darkMode', darkMode ? 'true' : 'false'); } catch (e) {}
+  }, [theme, darkMode]);
 
   return (
       <div
@@ -71,8 +94,8 @@ const AdminDashboard = ({ onLogout, page }) => {
             {/* Inline KPI tiles (responsive): use classes so cards shrink to fit side-by-side on small screens */}
             <style>{`
               /* KPI row - desktop */
-              /* Reserve space on the right so the KPI row lines up with the right column (low-stock) */
-              .kpi-row{display:flex;gap:12px;align-items:stretch;flex-wrap:nowrap;max-width:calc(100% - 332px)}
+              /* Let flexbox size the KPI row so there is no large reserved gap on the right. */
+              .kpi-row{display:flex;gap:12px;align-items:stretch;flex-wrap:nowrap;flex:1 1 auto;max-width:none}
               .kpi-card{flex:1 1 calc((100% - 24px)/3);min-width:0;background:var(--bg-drawer);border:1px solid var(--border-main);border-radius:8px;padding:8px;color:var(--text-main);box-sizing:border-box}
               .kpi-card .kpi-value{font-size:26px;font-weight:800;line-height:1}
               .kpi-card .kpi-sub{font-size:12px;color:var(--text-secondary)}
@@ -108,9 +131,16 @@ const AdminDashboard = ({ onLogout, page }) => {
             `}</style>
 
             {/* hook into appointments to compute unique customers */}
-            <KpiWithAppointments />
+            <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+              <div style={{ flex: 1 }}>
+                <KpiWithAppointments />
+              </div>
+              <div style={{ width: 320 }}>
+                <LowStockBox items={items} inventoryMap={inventoryMap} invLoading={invLoading} />
+              </div>
+            </div>
 
-            {/* Recent sales chart (left) and Low stock list (right) */}
+            {/* Recent sales chart (left) and Stylists on the right (LowStock moved above) */}
             <DashboardSummary branch={branch} />
             <SummaryAlignedBox />
           </>
@@ -219,6 +249,52 @@ function KpiWithAppointments() {
 }
 
 // SummaryAlignedContainer removed per user request.
+
+// Low stock box that will be rendered beside the KPI row so it lines up with the 3-container layout
+function LowStockBox({ items, inventoryMap, invLoading }) {
+  const lowThreshold = 5;
+  const lowItems = React.useMemo(() => {
+    if (!items || !items.length) return [];
+    const out = [];
+    for (const p of items) {
+      const pid = p.id;
+      const per = inventoryMap && inventoryMap[pid] ? inventoryMap[pid] : {};
+      for (const [branchKey, data] of Object.entries(per || {})) {
+        const qty = Number((data && data.quantity) || 0);
+        if (qty <= lowThreshold) out.push({ product: p.name || p.title || pid, branch: branchKey, qty });
+      }
+    }
+    return out.slice(0, 8);
+  }, [items, inventoryMap]);
+
+  return (
+    <div style={{ background: 'var(--bg-drawer)', border: '1px solid var(--border-main)', borderRadius: 8, padding: 12 }}>
+      <div style={{ fontWeight: 700, marginBottom: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div>Low Stock Items</div>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          {lowItems && lowItems.length > 0 ? (
+            <div style={{ background: '#d32f2f', color: '#fff', padding: '4px 8px', borderRadius: 12, fontSize: 12, fontWeight: 700 }}>{lowItems.length} low</div>
+          ) : (
+            <div className="no-alerts-text" style={{ fontSize: 12, color: 'var(--text-secondary)' }}>No alerts</div>
+          )}
+        </div>
+      </div>
+
+      {invLoading ? <div>Loading…</div> : (
+        lowItems.length ? (
+          <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+            {lowItems.map((li, i) => (
+              <li key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 6px', borderBottom: '1px dashed rgba(0,0,0,0.06)' }}>
+                <div style={{ fontSize: 13 }}>{li.product}</div>
+                <div style={{ fontSize: 13, fontWeight: 700 }}>{li.qty} <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>@{li.branch}</span></div>
+              </li>
+            ))}
+          </ul>
+        ) : <div style={{ color: 'var(--text-secondary)' }}>No low-stock items</div>
+      )}
+    </div>
+  );
+}
 
 // Small summary area: recent sales chart on the left and low-stock list on the right
 function DashboardSummary({ branch }) {
@@ -689,34 +765,8 @@ function DashboardSummary({ branch }) {
       </div>
 
       <div className="summary-right">
-        <div style={{ background: 'var(--bg-drawer)', border: '1px solid var(--border-main)', borderRadius: 8, padding: 12 }}>
-          <div style={{ fontWeight: 700, marginBottom: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div>Low Stock Items</div>
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-              {lowItems && lowItems.length > 0 ? (
-                <div style={{ background: '#d32f2f', color: '#fff', padding: '4px 8px', borderRadius: 12, fontSize: 12, fontWeight: 700 }}>{lowItems.length} low</div>
-              ) : (
-                <div className="no-alerts-text" style={{ fontSize: 12, color: 'var(--text-secondary)' }}>No alerts</div>
-              )}
-            </div>
-          </div>
-          {invLoading ? <div>Loading…</div> : (
-            lowItems.length ? (
-              <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-                {lowItems.map((li, i) => (
-                  <li key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 6px', borderBottom: '1px dashed rgba(0,0,0,0.06)' }}>
-                    <div style={{ fontSize: 13 }}>{li.product}</div>
-                    <div style={{ fontSize: 13, fontWeight: 700 }}>{li.qty} <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>@{li.branch}</span></div>
-                  </li>
-                ))}
-              </ul>
-            ) : <div style={{ color: 'var(--text-secondary)' }}>No low-stock items</div>
-          )}
-
-          
-        </div>
         {/* Stylists: show stylist roster (desktop) backed by users + appointments */}
-        <div className="stylists-card" style={{ background: 'var(--bg-drawer)', border: '1px solid var(--border-main)', borderRadius: 8, padding: 12, minWidth: 260, marginTop: 12 }}>
+        <div className="stylists-card" style={{ background: 'var(--bg-drawer)', border: '1px solid var(--border-main)', borderRadius: 8, padding: 12, minWidth: 260, marginTop: 0 }}>
           <style>{`@media (min-width:721px){ .stylists-card{display:block} } @media (max-width:720px){ .stylists-card{display:none} }`}</style>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, gap: 8 }}>
             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
@@ -1021,7 +1071,7 @@ function SummaryAlignedBox() {
                           </div>
                           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
                             <div style={{ fontWeight: 700 }}>{timeStr}</div>
-                            <div style={{ marginTop: 6, fontSize: 11, padding: '4px 6px', borderRadius: 6, background: 'rgba(0,0,0,0.03)', color: 'var(--text-secondary)' }}>{status}</div>
+                            <div style={{ marginTop: 6, fontSize: 11, padding: '4px 6px', borderRadius: 6, background: 'rgba(0,0,0,0.03)', color: 'var(--text-secondary)' }}>{formatStatus(status)}</div>
                           </div>
                         </li>
                       );

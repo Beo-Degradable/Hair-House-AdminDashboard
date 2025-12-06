@@ -147,9 +147,6 @@ const InventoryPage = () => {
 
   return (
     <div style={{ padding: '0px 15px 16px 15px' }}>
-      <div style={{ padding: '0px 0 4px 0' }}>
-        <h2 style={{ margin: 0, marginTop: 0, marginBottom: isMobile ? 12 : 50 }}>Inventory</h2>
-      </div>
 
       {/* Controls */}
       {!isMobile ? (

@@ -1,7 +1,7 @@
 import React, { useContext, useEffect, useMemo, useRef, useState } from 'react';
 import useAppointments from '../../../hooks/useAppointments';
 import { AuthContext } from '../../../context/AuthContext';
-import { formatCurrency } from '../../../utils/formatters';
+import { formatCurrency, formatStatus } from '../../../utils/formatters';
 import { collection, onSnapshot, query as q, orderBy, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../../firebase';
 import { adjustBranchQty, adjustInventoryRecord } from '../../../utils/inventoryActions';
@@ -229,26 +229,26 @@ const StylistAppointmentPage = () => {
   return (
     <div style={{ padding: 12, height: 'calc(100vh - 96px)', boxSizing: 'border-box', display: 'flex', flexDirection: 'column' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-        <h2 style={{ margin: 0, color: '#fff' }}>Calendar</h2>
+        <h2 style={{ margin: 0, color: 'var(--text-main)' }}>Calendar</h2>
         <div>
           <button onClick={() => setShowWalkinModal(true)} style={{ padding: '8px 10px', borderRadius: 6, border: '1px solid var(--border-main)', background: 'var(--gold, #f6c85f)', cursor: 'pointer' }}>New Walk-in</button>
         </div>
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12, flex: 1 }}>
-  <div style={{ width: '97%', maxWidth: 540, margin: '0 auto', background: 'var(--bg-drawer)', border: '1px solid var(--border-main)', borderRadius: 6, padding: 8, display: 'flex', flexDirection: 'column', height: '90%', color: '#fff' }}>
+  <div style={{ width: '97%', maxWidth: 540, margin: '0 auto', background: 'var(--bg-drawer)', border: '1px solid var(--border-main)', borderRadius: 6, padding: 8, display: 'flex', flexDirection: 'column', height: '90%', color: 'var(--text-main)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
             <div style={{ fontWeight: 700, fontSize: 13 }}>{currentMonth.toLocaleString(undefined, { month: 'long', year: 'numeric' })}</div>
             <div style={{ display: 'flex', gap: 4 }}>
-              <button onClick={() => { setCurrentMonth(m => addMonths(m, -1)); setSelectedDate(null); }} style={{ padding: '3px 5px', borderRadius: 5, border: '1px solid var(--border-main)', background: 'none', cursor: 'pointer', color: '#fff', fontSize: 11 }}>{'‹'}</button>
-              <button onClick={() => { setCurrentMonth(startOfMonth(new Date())); setSelectedDate(null); }} style={{ padding: '3px 5px', borderRadius: 5, border: '1px solid var(--border-main)', background: 'none', cursor: 'pointer', color: '#fff', fontSize: 11 }}>Today</button>
-              <button onClick={() => { setCurrentMonth(m => addMonths(m, 1)); setSelectedDate(null); }} style={{ padding: '3px 5px', borderRadius: 5, border: '1px solid var(--border-main)', background: 'none', cursor: 'pointer', color: '#fff', fontSize: 11 }}>{'›'}</button>
+              <button onClick={() => { setCurrentMonth(m => addMonths(m, -1)); setSelectedDate(null); }} style={{ padding: '3px 5px', borderRadius: 5, border: '1px solid var(--border-main)', background: 'none', cursor: 'pointer', color: 'var(--text-main)', fontSize: 11 }}>{'‹'}</button>
+              <button onClick={() => { setCurrentMonth(startOfMonth(new Date())); setSelectedDate(null); }} style={{ padding: '3px 5px', borderRadius: 5, border: '1px solid var(--border-main)', background: 'none', cursor: 'pointer', color: 'var(--text-main)', fontSize: 11 }}>Today</button>
+              <button onClick={() => { setCurrentMonth(m => addMonths(m, 1)); setSelectedDate(null); }} style={{ padding: '3px 5px', borderRadius: 5, border: '1px solid var(--border-main)', background: 'none', cursor: 'pointer', color: 'var(--text-main)', fontSize: 11 }}>{'›'}</button>
             </div>
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 3, textAlign: 'center', marginBottom: 3 }}>
             {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d => (
-              <div key={d} style={{ fontSize: 10, color: '#fff', fontWeight: 700 }}>{d}</div>
+              <div key={d} style={{ fontSize: 10, color: 'var(--text-main)', fontWeight: 700 }}>{d}</div>
             ))}
           </div>
 
@@ -262,7 +262,7 @@ const StylistAppointmentPage = () => {
                   padding: 5,
                   borderRadius: 5,
                   background: isSelected ? 'var(--text-main)' : 'transparent',
-                  color: isSelected ? 'white' : '#fff',
+                  color: isSelected ? '#fff' : 'var(--text-main)',
                   border: 'none',
                   cursor: 'pointer',
                   position: 'relative',
@@ -274,7 +274,7 @@ const StylistAppointmentPage = () => {
                   justifyContent: 'space-between'
                 }}>
                   <div style={{ fontSize: 11, fontWeight: 700 }}>{day.getDate()}</div>
-                  {hasAppts && <div style={{ position: 'absolute', left: 6, bottom: 5, width: 5, height: 5, borderRadius: 5, background: 'var(--gold, #f6c85f)' }} />}
+                  {hasAppts && <div style={{ position: 'absolute', left: 6, bottom: 5, width: 5, height: 5, borderRadius: 5, background: 'var(--accent-weak, #f6c85f)' }} />}
                 </button>
               );
             }))}
@@ -320,7 +320,7 @@ const StylistAppointmentPage = () => {
                       </div>
 
                       <div style={{ textAlign: 'right', minWidth: 140 }}>
-                        <div style={{ fontWeight: 800 }}>{a.status || 'booked'}</div>
+                        <div style={{ fontWeight: 800 }}>{formatStatus(a.status || 'booked')}</div>
                         {typeof a.price === 'number' && <div style={{ fontSize: 13, color: 'var(--icon-main)' }}>{formatCurrency(a.price)}</div>}
                         {!isCompleted && !isCancelled && !isPast ? (
                           <div style={{ marginTop: 8 }}>

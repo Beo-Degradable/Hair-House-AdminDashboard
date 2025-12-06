@@ -1,5 +1,6 @@
 // ViewAppointmentModal: read-only details view.
 import React from 'react';
+import { formatStatus } from '../../../utils/formatters';
 
 export default function ViewAppointmentModal({ appointment, open = false, onClose = () => {} }) {
   if (!open || !appointment) return null;
@@ -26,7 +27,7 @@ export default function ViewAppointmentModal({ appointment, open = false, onClos
           <div style={{ marginTop: 8 }}><strong>Service:</strong> {appointment.serviceName || appointment.service || (Array.isArray(appointment.services) && appointment.services.length ? appointment.services.map(s => s.name || s.serviceName || s.title || '').filter(Boolean).join(', ') : '')}</div>
           <div><strong>Stylist:</strong> {appointment.stylistName}</div>
           <div><strong>When:</strong> {new Date(appointment.startTime?.toDate ? appointment.startTime.toDate() : appointment.startTime).toLocaleString()}</div>
-          <div><strong>Status:</strong> {appointment.status}</div>
+          <div><strong>Status:</strong> {formatStatus(appointment.status)}</div>
 
           <div style={{ marginTop: 12, padding: 12, borderRadius: 8, background: '#232323', border: '1px solid rgba(255,255,255,0.03)' }}>
             <div style={{ fontWeight: 700, marginBottom: 6 }}>Payment</div>

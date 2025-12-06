@@ -72,32 +72,35 @@ const PaymentProfilesPage = () => {
   };
 
   return (
-    <div style={{ padding: 24 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
-        <h2>Payment Profiles</h2>
-        <div>
-          <button onClick={openAdd} className="button-gold-dark" style={{ padding: '8px 14px', borderRadius: 8 }}>Add Profile</button>
+    <div style={{ padding: '8px 16px 24px' }}>
+      {/* Containered layout: profiles sit inside a bordered card with header + Add button */}
+      <div style={{ border: '1px solid var(--border-main)', borderRadius: 8, padding: 12, background: 'transparent' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+          <h3 style={{ margin: 0 }}>Payment Profiles</h3>
+          <div>
+            <button onClick={openAdd} className="button-gold-dark" style={{ padding: '8px 14px', borderRadius: 8 }}>Add Profile</button>
+          </div>
         </div>
-      </div>
 
-      {loading ? <div style={{ marginTop: 12 }}>Loading…</div> : null}
+        {loading ? <div style={{ marginTop: 6 }}>Loading…</div> : null}
 
-      <div style={{ marginTop: 16, display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 12 }}>
-        {profiles.map(p => (
-          <div key={p.id} style={{ border: '1px solid var(--border-main)', borderRadius: 8, padding: 12, background: 'var(--bg-drawer)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
-              <div>
-                <div style={{ fontWeight: 700, fontSize: 16 }}>{p.name || 'Unnamed'}</div>
-                <div style={{ fontSize: 13, color: 'var(--muted)' }}>{p.phone || ''}</div>
-                <div style={{ marginTop: 8 }}><strong>Type:</strong> {(p.type || '').toUpperCase()}</div>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                <button onClick={() => startEdit(p)} className="btn" style={{ padding: '6px 8px' }}>Update</button>
-                <button onClick={() => remove(p.id)} className="btn btn-danger" style={{ padding: '6px 8px' }}>Delete</button>
+        <div style={{ marginTop: 6, display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 12 }}>
+          {profiles.map(p => (
+            <div key={p.id} style={{ border: '1px solid var(--border-main)', borderRadius: 8, padding: 12, background: 'var(--bg-drawer)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: 16 }}>{p.name || 'Unnamed'}</div>
+                  <div style={{ fontSize: 13, color: 'var(--muted)' }}>{p.phone || ''}</div>
+                  <div style={{ marginTop: 8 }}><strong>Type:</strong> {(p.type || '').toUpperCase()}</div>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <button onClick={() => startEdit(p)} className="btn" style={{ padding: '6px 8px' }}>Update</button>
+                  <button onClick={() => remove(p.id)} className="btn btn-danger" style={{ padding: '6px 8px' }}>Delete</button>
+                </div>
               </div>
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
 
       {showAdd && (

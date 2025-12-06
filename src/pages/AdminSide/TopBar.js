@@ -94,8 +94,8 @@ const drawerBtnStyle = {
   cursor: "pointer",
   fontWeight: "var(--font-weight-main)",
 };
-// A faded gold used for subtle borders (search, avatar)
-const fadedGold = 'rgba(202,169,10,0.28)';
+// Subtle accent used for search borders / highlighted rows; falls back to a soft accent variable
+const fadedGold = 'var(--accent-weak, rgba(202,169,10,0.08))';
 
 const TopBar = ({ onLogout, darkMode, setDarkMode, settingsOpen, setSettingsOpen }) => {
   const navigate = useNavigate();
@@ -753,7 +753,7 @@ useEffect(() => {
           width: "100%",
           height: 56,
           background: "var(--bg-drawer)",
-          color: 'white',
+          color: 'var(--text-main)',
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
@@ -765,17 +765,17 @@ useEffect(() => {
           fontWeight: "var(--font-weight-main)",
           fontFamily: 'inherit',
           transition: "background 0.3s, color 0.3s, font-weight 0.3s",
-          borderBottom: '1px solid var(--border-faint, rgba(201,184,106,0.22))'
+          borderBottom: '1px solid var(--border-faint, rgba(201,184,106,0.08))'
         }}
       >
-        {/* enforce white for topbar text/icons/inputs (use keyword 'white' and high specificity) */}
+        {/* Use theme variables rather than forcing white so topbar adapts to light/dark themes */}
         <style>{`
-          .admin-topbar { color: white !important; }
-          .admin-topbar * { color: white !important; }
-          .admin-topbar svg, .admin-topbar svg * { fill: white !important; stroke: white !important; }
-          .admin-topbar input.hh-search-input { color: white !important; }
-          .admin-topbar input::placeholder { color: rgba(255,255,255,0.72) !important; }
-          .admin-topbar .hh-search-result { color: white !important; }
+          .admin-topbar { color: var(--text-main) !important; }
+          .admin-topbar * { color: inherit !important; }
+          .admin-topbar svg, .admin-topbar svg * { fill: currentColor !important; stroke: currentColor !important; }
+          .admin-topbar input.hh-search-input { color: var(--text-main) !important; }
+          .admin-topbar input::placeholder { color: rgba(107,114,128,0.6) !important; }
+          .admin-topbar .hh-search-result { color: inherit !important; }
         `}</style>
         {/* vertical seam aligned to drawer's right border so the border appears continuous under the topbar */}
         {isWide && (
@@ -826,9 +826,9 @@ useEffect(() => {
                   width: searchBarWidth,
                   transition: 'width 0.22s ease',
                   borderRadius: 8,
-                  background: 'var(--bg-drawer, rgba(35,35,35,0.95))',
+                  background: 'var(--bg-drawer)',
                   border: '1px solid ' + fadedGold,
-                  boxShadow: showSearch ? '0 6px 18px rgba(0,0,0,0.18)' : 'none',
+                  boxShadow: showSearch ? '0 6px 18px rgba(0,0,0,0.08)' : 'none',
                   padding: '4px 6px'
                 }}>
                     <input
@@ -840,7 +840,7 @@ useEffect(() => {
                       onKeyDown={onSearchKey}
                       placeholder={searchPlaceholder}
                       aria-label="Search"
-                      style={{ height: 24, padding: '4px 6px', borderRadius: 6, border: 'none', background: 'transparent', color: 'white', width: '100%', outline: 'none', fontSize: 13 }}
+                      style={{ height: 24, padding: '4px 6px', borderRadius: 6, border: 'none', background: 'transparent', color: 'var(--text-main)', width: '100%', outline: 'none', fontSize: 13 }}
                     />
                 </div>
 
@@ -853,9 +853,9 @@ useEffect(() => {
                   width: searchBarWidth,
                   zIndex: 1402,
                   borderRadius: 8,
-                  background: 'var(--bg-drawer, rgba(35,35,35,0.95))',
+                  background: 'var(--bg-drawer)',
                   border: '1px solid ' + fadedGold,
-                  boxShadow: '0 10px 30px rgba(0,0,0,0.5)',
+                  boxShadow: '0 10px 30px rgba(0,0,0,0.08)',
                   overflow: 'hidden',
                   maxHeight: (showSearch ? Math.min(320, 56 + (Array.isArray(searchResults) ? searchResults.length * 56 : 0)) : 0),
                   transition: 'max-height 0.18s ease, opacity 0.12s ease',
@@ -874,10 +874,10 @@ useEffect(() => {
                       if (r.type === 'product') safeNavigate(`/products?id=${encodeURIComponent(r.id)}`);
                       else if (r.type === 'service') safeNavigate(`/services?id=${encodeURIComponent(r.id)}`);
                       else if (r.type === 'user') safeNavigate(`/users?id=${encodeURIComponent(r.id)}`);
-                    }} style={{ display: 'flex', gap: 8, alignItems: 'center', width: '100%', padding: '10px 12px', background: searchSelected === idx ? 'rgba(202,169,10,0.08)' : 'transparent', border: 'none', textAlign: 'left', color: 'white', cursor: 'pointer' }} onMouseEnter={() => setSearchSelected(idx)} onMouseLeave={() => setSearchSelected(-1)}>
+                    }} style={{ display: 'flex', gap: 8, alignItems: 'center', width: '100%', padding: '10px 12px', background: searchSelected === idx ? 'var(--accent-weak, rgba(202,169,10,0.08))' : 'transparent', border: 'none', textAlign: 'left', color: 'var(--text-main)', cursor: 'pointer' }} onMouseEnter={() => setSearchSelected(idx)} onMouseLeave={() => setSearchSelected(-1)}>
                       <div style={{ width: 8 }} />
                       <div style={{ display: 'flex', flexDirection: 'column' }}>
-                        <div style={{ fontWeight: 700, color: '#ffd14d' }}>{renderHighlighted(r.label)}</div>
+                        <div style={{ fontWeight: 700, color: 'var(--accent)' }}>{renderHighlighted(r.label)}</div>
                         <div style={{ fontSize: 12, color: 'var(--muted)' }}>{r.type}</div>
                       </div>
                     </button>
@@ -964,9 +964,10 @@ useEffect(() => {
               minWidth: (isWide && denseSidebar) ? desktopDenseWidth : '180px',
               height: "100vh",
               paddingTop: 56,
+              paddingBottom: 128, /* reserve space so footer stays visible above bottom (larger so it's above OS taskbar) */
               background: "var(--bg-drawer, rgba(35,35,35,0.95))",
               borderRight: "2px solid var(--border-faint, rgba(201,184,106,0.22))",
-              color: 'white',
+              color: 'var(--text-main)',
               fontFamily: 'sans-serif',
               boxShadow: (isWide || drawerOpen) ? (darkMode ? "2px 0 16px #0008" : "2px 0 16px rgba(255,215,0,0.2)") : "none",
               zIndex: 1301,
@@ -977,7 +978,7 @@ useEffect(() => {
             }}
           >
         {/* Dense-toggle button (absolute) */}
-        <button onClick={() => setDenseSidebar(s => !s)} title={denseSidebar ? 'Expand sidebar' : 'Compact sidebar'} style={{ position: 'absolute', right: 10, top: 12, width: 36, height: 36, borderRadius: 8, background: 'transparent', border: '1px solid rgba(255,255,255,0.04)', color: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }} aria-label="Toggle dense sidebar">
+        <button onClick={() => setDenseSidebar(s => !s)} title={denseSidebar ? 'Expand sidebar' : 'Compact sidebar'} style={{ position: 'absolute', right: 10, top: 12, width: 36, height: 36, borderRadius: 8, background: 'transparent', border: '1px solid var(--border-faint)', color: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }} aria-label="Toggle dense sidebar">
           {denseSidebar ? (
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden>
               <path d="M9 6l6 6-6 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
@@ -996,7 +997,7 @@ useEffect(() => {
               style={{ width: 56, height: 'auto', objectFit: 'contain', display: 'block' }}
             />
             <div style={{ fontWeight: "var(--font-weight-main)", fontSize: 14, color: 'inherit', lineHeight: 1 }}>{'Hair House Salon'}</div>
-            <div aria-hidden style={{ width: '86%', height: 1, background: 'rgba(255,255,255,0.12)', borderRadius: 1, margin: '8px auto 6px' }} />
+            <div aria-hidden style={{ width: '86%', height: 1, background: 'var(--border-faint)', borderRadius: 1, margin: '8px auto 6px' }} />
           </div>
         )}
         {/* Render primary navigation from topbar here (vertical list) */}
@@ -1031,7 +1032,7 @@ useEffect(() => {
                       <div style={{ position: 'absolute', left: -6, top: 12, width: 4, height: 32, borderRadius: 4, background: '#ffd14d' }} />
                     )}
                   </button>
-                  <div style={{ width: 28, height: 1, background: 'rgba(255,255,255,0.06)', marginTop: 8, borderRadius: 1 }} />
+                    <div style={{ width: 28, height: 1, background: 'var(--border-faint)', marginTop: 8, borderRadius: 1 }} />
                 </div>
               );
             }
@@ -1057,7 +1058,7 @@ useEffect(() => {
           })}
         </div>
         {!(isWide && denseSidebar && !drawerOpen) && (
-          <div style={{ marginTop: "auto", padding: "1rem 1rem 1.25rem 1rem", borderTop: "1px solid var(--border-faint, rgba(201,184,106,0.22))", display: "flex", alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+          <div style={{ position: 'absolute', bottom: 'calc(env(safe-area-inset-bottom, 0px) + 72px)', left: 0, right: 0, padding: '12px 16px', borderTop: '1px solid var(--border-faint, rgba(201,184,106,0.22))', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, background: 'transparent', zIndex: 1405 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               {/* Use a compact initials avatar in the drawer footer (deterministic, no external images) */}
                 <div style={{ width: 28, height: 28, borderRadius: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--border-main)', background: 'var(--border-main)', color: 'inherit', fontWeight: 700, fontSize: 12 }}>{getInitials(fullName)}</div>
@@ -1071,13 +1072,13 @@ useEffect(() => {
             <button
               onClick={() => { setDrawerOpen(false); if (onLogout) onLogout(); }}
               style={{
-                background: 'transparent',
-                  color: 'white',
-                border: '1px solid var(--logout-color, #d32f2f)',
-                padding: '4px 10px',
-                borderRadius: 6,
+                background: 'var(--logout-bg, #d32f2f)',
+                color: 'var(--logout-color, #ffffff)',
+                border: '1px solid var(--logout-bg, #d32f2f)',
+                padding: '6px 12px',
+                borderRadius: 8,
                 fontWeight: 700,
-                fontSize: 12,
+                fontSize: 13,
                 cursor: 'pointer'
               }}
             >

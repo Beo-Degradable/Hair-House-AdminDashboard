@@ -8,6 +8,7 @@ import ViewAppointmentModal from './ViewAppointmentModal';
 import EditAppointmentModal from './EditAppointmentModal';
 import CustomerHistoryModal from './CustomerHistoryModal';
 import { parseDurationToMinutes } from '../../../utils/time';
+import { formatStatus } from '../../../utils/formatters';
 import { collection, query as q, where, getDocs, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../../firebase';
 import { adjustBranchQty, adjustInventoryRecord } from '../../../utils/inventoryActions';
@@ -233,7 +234,7 @@ export default function AppointmentPage() {
       }</td>
       <td style={{ padding: 8 }}>{a.stylistName}</td>
       <td style={{ padding: 8 }}>{a.branch}</td>
-  <td style={{ padding: 8, textTransform: 'capitalize' }}>{String(a.status || '').toLowerCase() === 'done' ? 'completed' : a.status}</td>
+  <td style={{ padding: 8, textTransform: 'capitalize' }}>{formatStatus(String(a.status || '').toLowerCase() === 'done' ? 'completed' : a.status)}</td>
       <td style={{ padding: 8 }}>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
           <button className="btn" onClick={() => handleView(a)}>View</button>

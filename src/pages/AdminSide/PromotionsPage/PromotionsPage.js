@@ -82,42 +82,34 @@ export default function PromotionsPage() {
   };
 
   return (
-    <div style={{ padding: 24 }}>
-      <h1 style={{ marginTop: 0 }}>Promotions</h1>
-
-      {/* Controls row: branch & promo dropdown side-by-side (labels removed) */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 14, marginTop: 8, marginBottom: 16, justifyContent: 'space-between' }}>
-        <div style={{ display: 'flex', gap: 1, flexWrap: 'nowrap', alignItems: 'center' }}>
-          <div style={{ minWidth: 150 }}>
-            <BranchSelector
-              size="sm"
-              branches={branches}
-              value={selectedBranch}
-              onChange={setSelectedBranch}
-            />
-          </div>
-          <div style={{ minWidth: 140 }}>
-            <select
-              value={promoType}
-              onChange={(e) => setPromoType(e.target.value)}
-              style={{ padding: 6, borderRadius: 6, width: '100%', fontSize: 13, height: 32 }}
-            >
-              <option value="">All types</option>
-              <option value="Flash Offers">Flash Offers</option>
-              <option value="Promo">Promo</option>
-            </select>
+    <div style={{ padding: '8px 16px 24px' }}>
+      {/* Containered layout: promotions inside a bordered card with header + Add button */}
+      <div style={{ border: '1px solid var(--border-main)', borderRadius: 10, padding: 12, background: 'transparent' }}>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 12, marginBottom: 6 }}>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <div style={{ minWidth: 150 }}>
+              <BranchSelector size="sm" branches={branches} value={selectedBranch} onChange={setSelectedBranch} />
+            </div>
+            <div style={{ minWidth: 140 }}>
+              <select value={promoType} onChange={(e) => setPromoType(e.target.value)} style={{ padding: 6, borderRadius: 6, width: '100%', fontSize: 13, height: 32 }}>
+                <option value="">All types</option>
+                <option value="Flash Offers">Flash Offers</option>
+                <option value="Promo">Promo</option>
+              </select>
+            </div>
+            <div>
+              <button onClick={() => setShowAdd(true)} style={addBtnStyle}>Add</button>
+            </div>
           </div>
         </div>
-        <button onClick={() => setShowAdd(true)} style={addBtnStyle}>Add</button>
-      </div>
 
-      <div style={{
-        background: 'var(--bg-drawer)',
-        border: '1px solid var(--border-main)',
-        borderRadius: 10,
-        padding: 16,
-        overflowX: 'auto'
-      }}>
+        <div style={{
+          background: 'var(--bg-drawer)',
+          border: '1px solid var(--border-main)',
+          borderRadius: 10,
+          padding: 16,
+          overflowX: 'auto'
+        }}>
         {error && <div style={{ color: 'var(--danger, #d32f2f)', marginBottom: 12 }}>Error: {error}</div>}
         {loading ? (
           <div style={{ padding: 24, textAlign: 'center', fontSize: 14 }}>Loading promotions...</div>
@@ -174,6 +166,7 @@ export default function PromotionsPage() {
         />
       )}
     </div>
+  </div>
   );
 }
 
