@@ -70,8 +70,8 @@ export default function EditAppointmentModal({ appointment = null, open = false,
 
   return (
     <div style={{ display: open ? 'block' : 'none' }}>
-      <div style={{ position: 'fixed', left: 0, top: 0, right: 0, bottom: 0, background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={onClose}>
-        <form className="modal-form" onSubmit={handleSubmit} style={{ background: 'var(--surface, #232323)', color: 'var(--text-primary, #fff)', padding: 20, borderRadius: 8, width: 'min(540px, 92%)', border: '1px solid var(--border-main)' }} onClick={(e) => e.stopPropagation()}>
+      <div style={{ position: 'fixed', left: 0, top: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={onClose}>
+        <form className="modal-form" onSubmit={handleSubmit} style={{ background: 'var(--bg-surface, #232323)', color: 'var(--text-main)', padding: 20, borderRadius: 8, width: 'min(540px, 92%)', border: '1px solid var(--border-main)' }} onClick={(e) => e.stopPropagation()}>
           <h3 style={{ marginTop: 0 }}>Update appointment status</h3>
 
           <div style={{ marginBottom: 8 }}>
@@ -93,7 +93,7 @@ export default function EditAppointmentModal({ appointment = null, open = false,
 
           <div style={{ marginTop: 8 }}>
             <label style={{ display: 'block', fontSize: 12 }}>Status</label>
-            <select value={form.status} onChange={(e) => setForm(f => ({ ...f, status: e.target.value }))} style={{ width: '100%', padding: 8, background: '#2b2b2b', border: '1px solid var(--border-main)', color: '#fff' }}>
+            <select value={form.status} onChange={(e) => setForm(f => ({ ...f, status: e.target.value }))} style={{ width: '100%', padding: 8, background: 'var(--bg-surface, #2b2b2b)', border: '1px solid var(--border-main)', color: 'var(--text-main)' }}>
               <option value="booked">Booked</option>
               <option value="confirmed">Confirmed</option>
               <option value="completed">Completed</option>
@@ -120,7 +120,7 @@ export default function EditAppointmentModal({ appointment = null, open = false,
                   setPaymentError('');
                 }}
                 placeholder="e.g. 500.00"
-                style={{ width: '100%', padding: 8, background: '#2b2b2b', border: '1px solid var(--border-main)', color: '#fff', marginTop: 6 }}
+                style={{ width: '100%', padding: 8, background: 'var(--bg-surface, #2b2b2b)', border: '1px solid var(--border-main)', color: 'var(--text-main)', marginTop: 6 }}
               />
               {paymentError && <div style={{ color: '#ffb4a2', marginTop: 6 }}>{paymentError}</div>}
               <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 6 }}>Leave blank to use service default price.</div>

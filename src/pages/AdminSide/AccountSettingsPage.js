@@ -6,16 +6,18 @@ import { doc, onSnapshot, collection, query, where, limit } from 'firebase/fires
 import { AuthContext } from '../../context/AuthContext';
 
 const styles = {
-  page: { padding: 24, maxWidth: 840, margin: '0 auto', color: '#ffd54f', fontFamily: 'Inter, sans-serif' },
-  card: { background: '#1e1e1e', borderRadius: 10, padding: 16, border: '1px solid rgba(255,255,255,0.04)', marginBottom: 18 },
+  // use CSS variables so theme (light/dark) controls colors
+  page: { padding: 24, maxWidth: 840, margin: '0 auto', color: 'var(--text-main)', fontFamily: 'Inter, sans-serif' },
+  card: { background: 'var(--bg-drawer, #1e1e1e)', borderRadius: 10, padding: 16, border: '1px solid var(--border-main, rgba(255,255,255,0.04))', marginBottom: 18 },
   headerRow: { display: 'flex', gap: 12, alignItems: 'center' },
   avatar: { width: 64, height: 64, borderRadius: '50%', background: '#444', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28, fontWeight: 700 },
   buttons: { marginTop: 12, display: 'flex', gap: 8 },
-  btn: { padding: '8px 12px', borderRadius: 6, border: 'none', cursor: 'pointer' },
-  btnSecondary: { background: '#333', color: '#ddd' },
+  btn: { padding: '8px 12px', borderRadius: 6, border: 'none', cursor: 'pointer', color: 'var(--btn-foreground)' },
+  // make secondary actions clearly readable — use variables so light theme shows dark text
+  btnSecondary: { background: 'transparent', border: '1px solid var(--border-main, rgba(0,0,0,0.06))', color: 'var(--text-main)' },
   btnDanger: { background: '#d32f2f', color: '#fff' },
-  activityBox: { background: '#171717', borderRadius: 8, padding: 12, border: '1px solid rgba(255,255,255,0.03)' },
-  activityItem: { background: 'rgba(255,255,255,0.02)', padding: 10, borderRadius: 8, marginBottom: 8 }
+  activityBox: { background: 'var(--bg-surface, #171717)', borderRadius: 8, padding: 12, border: '1px solid var(--border-main, rgba(255,255,255,0.03))' },
+  activityItem: { background: 'var(--activity-item-bg, rgba(0,0,0,0.02))', padding: 10, borderRadius: 8, marginBottom: 8 }
 };
 
 // Component: Admin account data & password management
@@ -30,6 +32,7 @@ export default function AccountSettingsPage() {
   const [status, setStatus] = useState('');
   const [loading, setLoading] = useState(false);
   const [linking, setLinking] = useState(false);
+  const [errors, setErrors] = useState({ currentPw: '', newPassword: '', confirmPassword: '', email: '' });
   const [snack, setSnack] = useState({ open: false, message: '', type: 'info' });
   const showSnack = (message, type = 'info', timeout = 4000) => {
     try {
@@ -136,9 +139,25 @@ export default function AccountSettingsPage() {
     return `${head}...${tail}@${domain}`;
   };
 
+  // Responsive form sizing (shorter on mobile, spaced on desktop)
+  const formGap = isNarrow ? 10 : 14;
+  const formMaxWidth = isNarrow ? '92%' : 680;
+  const formStyle = { display: 'grid', gap: formGap, maxWidth: formMaxWidth };
+  const inputStyle = { width: '100%', padding: 8, borderRadius: 6, border: '1px solid var(--border-main)', background: 'var(--bg-surface, #fff)', color: 'var(--text-main)' };
+
+  // validate inputs live
+  useEffect(() => {
+    const errs = { currentPw: '', newPassword: '', confirmPassword: '', email: '' };
+    if (currentPw && currentPw.length < 1) errs.currentPw = 'Enter your current password';
+    if (newPassword && newPassword.length > 0 && newPassword.length < 8) errs.newPassword = 'Password must be at least 8 characters';
+    if (confirmPassword && newPassword !== confirmPassword) errs.confirmPassword = 'Passwords do not match';
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errs.email = 'Invalid email address';
+    setErrors(prev => ({ ...prev, ...errs }));
+  }, [currentPw, newPassword, confirmPassword, email]);
+
   return (
     <div style={styles.page}>
-      <h1 style={{ marginBottom: 12 }}>Account Settings</h1>
+      <h1 style={{ marginBottom: 12, color: 'var(--accent)' }}>Account Settings</h1>
 
       <div style={styles.card}>
         <div style={{ ...styles.headerRow, flexDirection: isNarrow ? 'column' : 'row', alignItems: isNarrow ? 'flex-start' : 'center' }}>
@@ -155,8 +174,8 @@ export default function AccountSettingsPage() {
             )}
           </div>
           <div style={{ flex: 1 }}>
-            <div style={{ fontWeight: 700 }}>{displayName}</div>
-            <div style={{ color: '#ddd', marginTop: 6 }}>{shortenEmail(email)}</div>
+            <div style={{ fontWeight: 700, color: 'var(--text-main)' }}>{displayName}</div>
+            <div style={{ color: 'var(--text-secondary)', marginTop: 6 }}>{shortenEmail(email)}</div>
           </div>
         </div>
 
@@ -189,12 +208,14 @@ export default function AccountSettingsPage() {
               {linking ? 'Linking…' : 'Use Google photo'}
             </button>
           )}
+
           <button
             style={{ ...styles.btn, ...styles.btnSecondary, width: isNarrow ? '100%' : 'auto' }}
             onClick={async () => {
               setStatus('');
+              const emailErr = !email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+              if (emailErr) { setErrors(prev => ({ ...prev, email: 'Invalid email address' })); setStatus('Enter a valid email to send reset'); return; }
               try {
-                if (!email) { setStatus('No email available for account'); return; }
                 await sendPasswordResetEmail(auth, email);
                 setStatus('Password reset email sent to ' + email);
                 showSnack('Password reset email sent to ' + email, 'success');
@@ -207,6 +228,7 @@ export default function AccountSettingsPage() {
           >
             Change password
           </button>
+
           <button
             style={{ ...styles.btn, ...styles.btnDanger, width: isNarrow ? '100%' : 'auto' }}
             onClick={async () => {
@@ -223,10 +245,11 @@ export default function AccountSettingsPage() {
           </button>
         </div>
       </div>
+
       <div style={styles.card}>
         {changeMode !== 'password' ? (
           <>
-            <div style={{ fontWeight: 700, marginBottom: 8, color: '#ffd54f' }}>Recent activity</div>
+            <div style={{ fontWeight: 700, marginBottom: 8, color: 'var(--accent)' }}>Recent activity</div>
             <div style={styles.activityBox}>
               {activities.map((a) => (
                 <div key={a.id} style={styles.activityItem}>
@@ -239,31 +262,36 @@ export default function AccountSettingsPage() {
         ) : (
           <>
             <div style={{ flex: 1 }}>
-              <div style={{ fontWeight: 800, fontSize: 16, lineHeight: 1.2 }}>{displayName}</div>
-              <div style={{ color: '#ddd', marginTop: 4, fontSize: 12 }}>{shortenEmail(email)}</div>
+              <div style={{ fontWeight: 800, fontSize: 16, lineHeight: 1.2, color: 'var(--text-main)' }}>{displayName}</div>
+                <div style={{ color: 'var(--text-secondary)', marginTop: 4, fontSize: 12 }}>{shortenEmail(email)}</div>
             </div>
-            <div style={{ display: 'grid', gap: 8, maxWidth: 520 }}>
-              <label style={{ color: '#ddd' }}>Current password</label>
+            <div style={formStyle}>
+              <label style={{ color: 'var(--text-secondary)' }}>Current password</label>
               <input
                 type="password"
                 value={currentPw}
                 onChange={(e) => setCurrentPw(e.target.value)}
-                style={{ width: isNarrow ? '100%' : 320, padding: 8, borderRadius: 6, border: '1px solid #333', background: '#121212', color: '#eee' }}
+                style={inputStyle}
               />
-              <label style={{ color: '#ddd' }}>New password</label>
+              {errors.currentPw ? <div style={{ color: '#f87171', fontSize: 12 }}>{errors.currentPw}</div> : null}
+
+              <label style={{ color: 'var(--text-secondary)' }}>New password</label>
               <input
                 type="password"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
-                style={{ width: isNarrow ? '100%' : 320, padding: 8, borderRadius: 6, border: '1px solid #333', background: '#121212', color: '#eee' }}
+                style={inputStyle}
               />
-              <label style={{ color: '#ddd' }}>Confirm password</label>
+              {errors.newPassword ? <div style={{ color: '#f87171', fontSize: 12 }}>{errors.newPassword}</div> : null}
+
+              <label style={{ color: 'var(--text-secondary)' }}>Confirm password</label>
               <input
                 type="password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                style={{ width: isNarrow ? '100%' : 320, padding: 8, borderRadius: 6, border: '1px solid #333', background: '#121212', color: '#eee' }}
+                style={inputStyle}
               />
+              {errors.confirmPassword ? <div style={{ color: '#f87171', fontSize: 12 }}>{errors.confirmPassword}</div> : null}
 
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
                 <button
@@ -271,9 +299,14 @@ export default function AccountSettingsPage() {
                   disabled={loading}
                   onClick={async () => {
                     setStatus('');
-                    if (!currentPw) return setStatus('Enter current password');
-                    if (!newPassword) return setStatus('Enter a new password');
-                    if (newPassword !== confirmPassword) return setStatus('Passwords do not match');
+                    // run validation on submit as well
+                    const errs = { currentPw: '', newPassword: '', confirmPassword: '' };
+                    if (!currentPw) errs.currentPw = 'Enter current password';
+                    if (!newPassword) errs.newPassword = 'Enter a new password';
+                    else if (newPassword.length < 8) errs.newPassword = 'Password must be at least 8 characters';
+                    if (newPassword !== confirmPassword) errs.confirmPassword = 'Passwords do not match';
+                    setErrors(prev => ({ ...prev, ...errs }));
+                    if (errs.currentPw || errs.newPassword || errs.confirmPassword) return setStatus('Fix validation errors');
                     setLoading(true);
                     try {
                       const cred = EmailAuthProvider.credential(email, currentPw);
@@ -289,6 +322,7 @@ export default function AccountSettingsPage() {
                 >
                   {loading ? 'Saving…' : 'Update password'}
                 </button>
+
                 <button
                   style={{ ...styles.btn, ...styles.btnSecondary, width: isNarrow ? '100%' : 'auto' }}
                   onClick={async () => {
@@ -298,13 +332,15 @@ export default function AccountSettingsPage() {
                 >
                   Forgot password? Email reset link
                 </button>
+
                 <button style={{ ...styles.btn, width: isNarrow ? '100%' : 'auto' }} onClick={() => setChangeMode(null)}>Cancel</button>
               </div>
-              {status && <div style={{ marginTop: 8, color: '#ffd54f' }}>{status}</div>}
+                  {status && <div style={{ marginTop: 8, color: 'var(--accent)' }}>{status}</div>}
             </div>
           </>
         )}
       </div>
+
       {/* Snackbar */}
       {snack.open && (
         <div style={{ position: 'fixed', left: '50%', bottom: 24, transform: 'translateX(-50%)', zIndex: 20000 }}>

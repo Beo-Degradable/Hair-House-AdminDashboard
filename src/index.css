@@ -42,13 +42,14 @@
 body {
   margin: 0;
   font-family: var(--font-family, 'Segoe UI', Arial, sans-serif);
-  background: var(--bg, #181818);
-  color: var(--text-primary, #fff);
+  /* prefer layout-provided vars: --bg-main and --text-main so themes applied at runtime affect the root */
+  background: var(--bg-main, var(--bg, #181818));
+  color: var(--text-main, var(--text-primary, #fff));
 }
 
 :root {
   /* legacy variables kept for compatibility */
-  --gold: #FFD700;
+  --gold: #D7B77A;
   --white: #fff;
   --black: #181818;
   --dark-grey: #232323;
@@ -60,7 +61,9 @@ body {
 
   /* Design tokens (centralized) */
   --primary: #2b6cb0; /* primary interactive color */
-  --accent: #FFD700; /* gold accent */
+  --accent: #D7B77A; /* gold accent */
+  --accent-foreground: var(--black);
+  --btn-foreground: var(--white);
   --bg: #181818;
   --surface: #232323;
   --text-primary: #111827;
@@ -89,6 +92,16 @@ body {
   --text-main: var(--text-primary);
   --icon-main: var(--muted-text);
   --logout-color: var(--danger);
+}
+
+/* Ensure the entire application uses a sans-serif font stack */
+/* Uses a modern system font stack with safe fallbacks. Form controls explicitly inherit this stack. */
+:root {
+  --font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+
+html, body, #root, input, button, textarea, select, optgroup, option {
+  font-family: var(--font-family) !important;
 }
 
 /* Responsive utility helpers */
@@ -191,8 +204,14 @@ h1, h2, h3, th {
   border-radius: 8px;
   border: 1px solid var(--border-main);
   background: transparent;
-  color: var(--white);
+  color: var(--text-main);
   cursor: pointer;
+}
+.btn:hover {
+  background: var(--btn-hover, rgba(255,255,255,0.04));
+}
+.btn:active {
+  background: var(--btn-active, rgba(16,24,32,0.08));
 }
 .btn-primary {
   background: var(--btn-bg);
@@ -389,6 +408,19 @@ select::-ms-expand { background: transparent; }
 }
 
 /* New appointment modal responsive sizing */
+
+/* Temporary visual override: force drawer option buttons to appear on the light surface
+   This is a targeted, high-specificity rule to aid visual verification while we finalize
+   theme token application; it can be removed once the theme variables are correct. */
+.admin-drawer button {
+  background: #ffffff !important;
+  color: #222222 !important;
+  border-color: transparent !important;
+}
+.admin-drawer button:hover {
+  background: #f5f5f5 !important;
+}
+
 .new-appointment-modal {
   background: var(--surface);
   color: var(--text-primary);

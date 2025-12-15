@@ -124,17 +124,17 @@ const EditServiceModal = ({ open, id, onClose }) => {
   return (
     <div style={{ display: open ? 'block' : 'none' }}>
       <div style={{ position: 'fixed', left: 0, top: 0, right: 0, bottom: 0, background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <form onSubmit={onSubmit} style={{ background: 'var(--surface, #232323)', color: '#fbfbfb', fontFamily: 'system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif', padding: 16, borderRadius: 8, width: 'min(560px, 92%)', maxHeight: '80vh', overflow: 'auto', border: '1px solid rgba(184,136,11,0.25)' }}>
+        <form onSubmit={onSubmit} style={{ background: 'var(--surface, #232323)', color: 'var(--text-main)', fontFamily: 'system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif', padding: 16, borderRadius: 8, width: 'min(560px, 92%)', maxHeight: '80vh', overflow: 'auto', border: '1px solid rgba(184,136,11,0.25)' }}>
           <h3 style={{ marginTop: 0 }}>Edit Service</h3>
           {loading || !data ? <div>Loading…</div> : (
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
               <div style={{ gridColumn: '1 / 2' }}>
                 <label style={{ display: 'block', fontSize: 14, fontWeight: 400, marginBottom: 6, fontFamily: 'system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' }}>Name</label>
-                <input required value={data.name || ''} onChange={e => onChange('name', e.target.value)} style={{ width: '80%', padding: 8, background: 'var(--surface)', border: '1px solid var(--border-main)', color: 'var(--text-primary)', fontSize: 14, fontWeight: 400, fontFamily: 'system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' }} />
+                <input required value={data.name || ''} onChange={e => onChange('name', e.target.value)} style={{ width: '80%', padding: 8, background: 'var(--surface)', border: '1px solid var(--border-main)', color: 'var(--text-main)', fontSize: 14, fontWeight: 400, fontFamily: 'system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' }} />
               </div>
               <div style={{ gridColumn: '2 / 3' }}>
                 <label style={{ display: 'block', fontSize: 14, fontWeight: 400, marginBottom: 6, fontFamily: 'system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' }}>Type</label>
-                <select value={data.type || 'hair'} onChange={e => onChange('type', e.target.value)} style={{ width: '80%', padding: 8, background: 'var(--surface)', border: '1px solid var(--border-main)', color: 'var(--text-primary)', fontSize: 14, fontWeight: 400, fontFamily: 'system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' }}>
+                <select value={data.type || 'hair'} onChange={e => onChange('type', e.target.value)} style={{ width: '80%', padding: 8, background: 'var(--surface)', border: '1px solid var(--border-main)', color: 'var(--text-main)', fontSize: 14, fontWeight: 400, fontFamily: 'system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' }}>
                   <option value="hair">Hair</option>
                   <option value="skin">Skin</option>
                   <option value="nails">Nails</option>
@@ -142,7 +142,7 @@ const EditServiceModal = ({ open, id, onClose }) => {
               </div>
               <div style={{ gridColumn: '1 / 2' }}>
                 <label style={{ display: 'block', fontSize: 14, fontWeight: 400, marginBottom: 6, fontFamily: 'system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' }}>Price</label>
-                <input required value={data.price || ''} onChange={e => onChange('price', e.target.value)} type="number" step="0.01" style={{ width: '80%', padding: 8, background: 'var(--surface)', border: '1px solid var(--border-main)', color: 'var(--text-primary)', fontSize: 14, fontWeight: 400, fontFamily: 'system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' }} />
+                <input required value={data.price || ''} onChange={e => onChange('price', e.target.value)} type="number" step="0.01" style={{ width: '80%', padding: 8, background: 'var(--surface)', border: '1px solid var(--border-main)', color: 'var(--text-main)', fontSize: 14, fontWeight: 400, fontFamily: 'system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' }} />
               </div>
               <div style={{ gridColumn: '2 / 3' }}>
                 <label style={{ display: 'block', fontSize: 12, marginBottom: 6 }}>Duration (HH:MM)</label>
@@ -157,7 +157,7 @@ const EditServiceModal = ({ open, id, onClose }) => {
                     setDurationInput(`${String(parsed.h).padStart(2, '0')}:${String(parsed.m).padStart(2, '0')}`);
                   }}
                   placeholder="00:00"
-                  style={{ width: '80%', padding: 8, background: 'var(--surface)', border: '1px solid var(--border-main)', color: 'var(--text-primary)' }}
+                  style={{ width: '80%', padding: 8, background: 'var(--surface)', border: '1px solid var(--border-main)', color: 'var(--text-main)' }}
                 />
                 <div style={{ marginTop: 8, color: 'var(--muted)' }}>Selected: {formatMinutes(localDurationMinutes)}</div>
               </div>
@@ -180,16 +180,16 @@ const EditServiceModal = ({ open, id, onClose }) => {
                     <div style={{ fontSize: 12, color: 'var(--muted)' }}>{imageName}</div>
                     <img src={imageBase64} alt="preview" style={{ marginTop: 6, maxWidth: 240, maxHeight: 160, objectFit: 'cover', borderRadius: 6 }} />
                     <div style={{ marginTop: 8, display: 'flex', gap: 8 }}>
-                      <button type="button" onClick={() => { if (fileInputRef.current) fileInputRef.current.click(); }} style={{ padding: '6px 10px', background: 'transparent', border: '1px solid rgba(184,136,11,0.35)', color: '#fbfbfb', cursor: 'pointer', borderRadius: 6 }}>Reupload</button>
-                      <button type="button" onClick={() => { setImageBase64(null); setImageName(''); if (fileInputRef.current) fileInputRef.current.value = null; }} style={{ padding: '6px 10px', background: 'transparent', border: '1px solid rgba(255,255,255,0.06)', color: '#fbfbfb', cursor: 'pointer', borderRadius: 6 }}>Remove</button>
+                      <button type="button" onClick={() => { if (fileInputRef.current) fileInputRef.current.click(); }} style={{ padding: '6px 10px', background: 'transparent', border: '1px solid rgba(184,136,11,0.35)', color: 'var(--text-main)', cursor: 'pointer', borderRadius: 6 }}>Reupload</button>
+                      <button type="button" onClick={() => { setImageBase64(null); setImageName(''); if (fileInputRef.current) fileInputRef.current.value = null; }} style={{ padding: '6px 10px', background: 'transparent', border: '1px solid rgba(255,255,255,0.06)', color: 'var(--text-main)', cursor: 'pointer', borderRadius: 6 }}>Remove</button>
                     </div>
                   </div>
                 ) : null}
               </div>
 
               <div style={{ gridColumn: '1 / -1', display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-                <button type="button" onClick={onClose} style={{ padding: '8px 12px', background: 'transparent', border: '1px solid rgba(255,255,255,0.06)', color: '#fbfbfb' }}>Cancel</button>
-                <button type="submit" className="button-gold-dark" style={{ padding: '8px 12px', background: 'transparent', border: '1px solid rgba(184,136,11,0.35)', color: '#fbfbfb' }}>Save</button>
+                <button type="button" onClick={onClose} style={{ padding: '8px 12px', background: 'transparent', border: '1px solid rgba(255,255,255,0.06)', color: 'var(--text-main)' }}>Cancel</button>
+                <button type="submit" className="button-gold-dark" style={{ padding: '8px 12px', background: 'transparent', border: '1px solid rgba(184,136,11,0.35)', color: 'var(--text-main)' }}>Save</button>
               </div>
             </div>
           )}

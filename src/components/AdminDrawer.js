@@ -40,18 +40,30 @@ export default function AdminDrawer({
 
   function DrawerButton({ children, onClick, active }) {
     const [hovered, setHovered] = useState(false);
-    const baseBg = 'transparent';
-    const hoverBg = darkMode ? 'rgba(255,255,255,0.02)' : 'var(--border-faint, rgba(16,24,32,0.03))';
-    const activeBg = active ? (activeLinkStyle && activeLinkStyle.background ? activeLinkStyle.background : 'var(--accent-weak, rgba(124,77,255,0.08))') : null;
-    const activeColor = active ? (activeLinkStyle && activeLinkStyle.color ? activeLinkStyle.color : 'var(--accent)') : undefined;
+    // Prefer the themed surface for button backgrounds so non-active options
+    // match the page surface in light mode. Use CSS tokens unconditionally
+    // to avoid showing hard-coded dark rectangles when theme variables are set.
+    const baseBg = 'var(--bg-surface, transparent)';
+    const hoverBg = 'var(--btn-hover, rgba(16,24,32,0.06))';
+    const accentColor = 'var(--accent, #D7B77A)';
+    const activeColor = active ? (activeLinkStyle && activeLinkStyle.color ? activeLinkStyle.color : accentColor) : undefined;
 
-    const style = {
+      // When the drawer is extended (drawerOpen === true) prefer the compact-like
+      // active visual: a filled, rounded surface with a left accent bar — instead
+      // of the previous border-only indicator. This copies the compact highlight
+      // behavior into the expanded drawer per user request.
+      const isExtendedActive = active && drawerOpen;
+      // Active buttons show a left vertical accent and a matching border.
+      const style = {
       ...drawerBtnStyle,
-      background: active ? activeBg : (hovered ? hoverBg : baseBg),
+      background: isExtendedActive ? 'var(--bg-surface, rgba(255,255,255,0.04))' : (hovered ? hoverBg : baseBg),
+      // show a prominent left accent bar for active items and a border matching the accent color
+      borderLeft: active ? `4px solid ${accentColor}` : '4px solid transparent',
+      border: active ? `1px solid ${accentColor}` : (hovered ? '1px solid var(--border-main, rgba(0,0,0,0.06))' : '1px solid transparent'),
       color: active ? (activeColor || 'var(--text-main)') : 'var(--text-main)',
-      boxShadow: hovered && !active ? (darkMode ? '0 6px 18px rgba(0,0,0,0.12)' : '0 8px 20px rgba(16,24,32,0.04)') : 'none',
+      boxShadow: isExtendedActive ? 'none' : (hovered && !active ? (darkMode ? '0 6px 18px rgba(0,0,0,0.12)' : '0 8px 20px rgba(16,24,32,0.04)') : 'none'),
       transform: hovered && !active ? 'translateY(-1px)' : 'none',
-      transition: 'background 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease',
+      transition: 'background 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease, border 0.12s ease',
       justifyContent: 'flex-start'
     };
 
@@ -83,7 +95,7 @@ export default function AdminDrawer({
         paddingBottom: 88, /* reserve space so footer doesn't get cut off */
         background: 'var(--bg-drawer, rgba(35,35,35,0.96))',
         borderRight: '2px solid var(--border-main, rgba(201,184,106,0.9))',
-        boxShadow: drawerOpen ? (darkMode ? '2px 0 16px #0008' : '2px 0 16px rgba(255,215,0,0.2)') : 'none',
+        boxShadow: drawerOpen ? (darkMode ? '2px 0 16px #0008' : '2px 0 12px rgba(16,24,32,0.06)') : 'none',
         zIndex: 1300,
         transition: 'transform 0.32s cubic-bezier(.4,0,.2,1)',
         display: 'flex',
@@ -92,7 +104,7 @@ export default function AdminDrawer({
       }}
     >
       <div style={{ padding: '18px 16px', borderBottom: '1px solid var(--border-faint)', display: 'flex', alignItems: 'center', gap: 12 }}>
-        <div style={{ width: 36, height: 36, borderRadius: 6, background: 'linear-gradient(180deg,#6b46c1,#553c9a)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: 12 }}>GH</div>
+        <div style={{ width: 36, height: 36, borderRadius: 6, background: `linear-gradient(180deg,var(--accent,#D7B77A), #BFA86A)`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: 12 }}>GH</div>
         <div style={{ display: 'flex', flexDirection: 'column' }}>
           <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--text-main)' }}>GLOWBOARD</div>
           <div style={{ fontSize: 11, color: 'var(--muted)' }}>Admin</div>
@@ -115,9 +127,9 @@ export default function AdminDrawer({
 
           return (
             <DrawerButton key={btn.label} onClick={handleClick} active={active}>
-              {/* left accent placeholder */}
-              <div style={{ width: 6, height: 28, borderRadius: 4, background: active ? 'var(--accent, #7c4dff)' : 'transparent', marginRight: 6 }} />
-              <span style={{ fontSize: 14, fontWeight: 400, color: active ? 'var(--accent)' : 'var(--text-main)' }}>{btn.label}</span>
+              {/* left spacer - actual active accent is rendered via borderLeft on the button */}
+              <div style={{ width: 6, height: 28, borderRadius: 4, background: 'transparent', marginRight: 8 }} />
+              <span style={{ fontSize: 14, fontWeight: 400, color: active ? (drawerOpen ? 'var(--text-main)' : 'var(--accent)') : 'var(--text-main)' }}>{btn.label}</span>
             </DrawerButton>
           );
         })}

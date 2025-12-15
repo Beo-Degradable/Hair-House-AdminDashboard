@@ -45,7 +45,7 @@ export default function AppointmentPage() {
   });
   const [filterBranch, setFilterBranch] = useState('all');
 
-  const branches = useMemo(() => ['Vergara', 'Lawas', 'Lipa', 'Tanauan'], []);
+  const branches = useMemo(() => ['Evangelista', 'Lawas', 'Lipa', 'Tanauan'], []);
 
   const handleEdit = (a) => { setEditing(a); setShowForm(true); };
 

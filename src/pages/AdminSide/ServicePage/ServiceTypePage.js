@@ -62,7 +62,7 @@ const ServiceTypePage = () => {
   };
 
   return (
-    <div style={{ padding: '12px 24px', fontFamily: 'system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif', color: '#fbfbfb' }}>
+    <div style={{ padding: '12px 24px', fontFamily: 'system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif', color: 'var(--text-main)' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
         <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
           <button className="btn" onClick={() => navigate(-1)} style={{ padding: '6px 10px' }}>Back</button>
@@ -77,7 +77,7 @@ const ServiceTypePage = () => {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div style={{ fontWeight: 700 }}>{s.name}</div>
                 <div style={{ width: 36, height: 36, borderRadius: 36, overflow: 'hidden', background: '#ddd', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  {s.imageUrl ? <img src={s.imageUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <div style={{ fontSize: 12, color: '#333' }}>Img</div>}
+                  {s.imageUrl ? <img src={s.imageUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <div style={{ fontSize: 12, color: 'var(--muted)' }}>Img</div>}
                 </div>
               </div>
               <div style={{ color: 'var(--text-secondary)', fontSize: 13 }}>{formatDuration(s)} {s.price != null ? `• ${formatPeso(s.price)}` : ''}</div>

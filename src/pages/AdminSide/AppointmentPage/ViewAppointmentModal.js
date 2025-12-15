@@ -14,8 +14,8 @@ export default function ViewAppointmentModal({ appointment, open = false, onClos
 
   return (
     <div style={{ display: 'block' }}>
-      <div style={{ position: 'fixed', left: 0, top: 0, right: 0, bottom: 0, background: '#1f1f1f', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10000 }} onClick={onClose}>
-        <div style={{ background: '#2b2b2b', color: '#fff', padding: 20, borderRadius: 8, width: 'min(520px, 96%)', border: '1px solid rgba(197,155,22,0.18)', boxSizing: 'border-box' }} onClick={(e) => e.stopPropagation()}>
+      <div style={{ position: 'fixed', left: 0, top: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10000 }} onClick={onClose}>
+        <div style={{ background: 'var(--bg-surface, #2b2b2b)', color: 'var(--text-main)', padding: 20, borderRadius: 8, width: 'min(520px, 96%)', border: '1px solid var(--border-main, rgba(197,155,22,0.18))', boxSizing: 'border-box' }} onClick={(e) => e.stopPropagation()}>
           <h3 style={{ marginTop: 0 }}>Appointment details</h3>
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
             <div style={{ flex: '1 1 60%' }}><strong>Client:</strong> {appointment.clientName} {appointment.clientEmail ? `(${appointment.clientEmail})` : ''}</div>
@@ -29,7 +29,7 @@ export default function ViewAppointmentModal({ appointment, open = false, onClos
           <div><strong>When:</strong> {new Date(appointment.startTime?.toDate ? appointment.startTime.toDate() : appointment.startTime).toLocaleString()}</div>
           <div><strong>Status:</strong> {formatStatus(appointment.status)}</div>
 
-          <div style={{ marginTop: 12, padding: 12, borderRadius: 8, background: '#232323', border: '1px solid rgba(255,255,255,0.03)' }}>
+          <div style={{ marginTop: 12, padding: 12, borderRadius: 8, background: 'var(--bg-surface, #232323)', border: '1px solid var(--border-main, rgba(255,255,255,0.03))' }}>
             <div style={{ fontWeight: 700, marginBottom: 6 }}>Payment</div>
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
               <div style={{ minWidth: 160 }}><strong>Amount paid:</strong> {amountPaid ? `₱${amountPaid}` : '—'}</div>
@@ -37,7 +37,7 @@ export default function ViewAppointmentModal({ appointment, open = false, onClos
               <div style={{ minWidth: 160 }}><strong>Reservation fee:</strong> {appointment.reservationFee ? `₱${appointment.reservationFee}` : (payment.details && payment.details.amount ? `₱${payment.details.amount}` : '—')}</div>
             </div>
             {payment.details && (
-              <div style={{ marginTop: 8, color: '#ddd', fontSize: 13 }}>
+              <div style={{ marginTop: 8, color: 'var(--text-secondary)', fontSize: 13 }}>
                 <div><strong>Payer:</strong> {payment.details.name || '—'}</div>
                 <div><strong>Number:</strong> {payment.details.number || '—'}</div>
               </div>
@@ -45,7 +45,7 @@ export default function ViewAppointmentModal({ appointment, open = false, onClos
           </div>
 
           <div style={{ marginTop: 12, display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-            <button className="btn" onClick={onClose} style={{ background: 'transparent', border: '1px solid rgba(197,155,22,0.18)', color: '#fff' }}>Close</button>
+            <button className="btn" onClick={onClose} style={{ background: 'transparent', border: '1px solid var(--border-main, rgba(197,155,22,0.18))', color: 'var(--text-main)' }}>Close</button>
           </div>
         </div>
       </div>

@@ -38,7 +38,7 @@ const InventoryPage = () => {
   const [editRawValue, setEditRawValue] = useState('');
   const [editingRawLoading, setEditingRawLoading] = useState(false);
   const defaultBranchMap = [
-    { id: 'B001', name: 'Vergara' },
+    { id: 'B001', name: 'Evangelista' },
     { id: 'B002', name: 'Lawas' },
     { id: 'B003', name: 'Lipa' },
     { id: 'B004', name: 'Tanauan' },

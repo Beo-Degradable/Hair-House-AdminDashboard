@@ -35,23 +35,22 @@ const AdminDashboard = ({ onLogout, page }) => {
         '--font-weight-main': 400,
       }
     : {
-          '--bg-main': '#F3F4F6',
-          // make drawer/topbar a bit darker in light mode so UI chrome reads clearly
-          '--bg-drawer': '#ECEFF2',
-          '--bg-surface': '#F6F7F8',
-          '--text-main': '#111827',
-          '--text-secondary': '#6B7280',
-          // stronger, darker gold for borders and accents so controls remain visible
-          '--border-main': 'rgba(184,134,11,0.18)',
-          '--border-faint': 'rgba(184,134,11,0.08)',
-          '--accent': '#B8860B',
-          '--accent-weak': 'rgba(184,134,11,0.08)',
-          '--icon-main': '#8B6B00',
-          '--btn-bg': 'none',
-          '--btn-hover': '#ECEFF4',
-          '--logout-bg': '#D32F2F',
-          '--logout-color': '#FFFFFF',
-          '--font-weight-main': 400,
+        /* Light mode design tokens mapped from provided spec */
+        '--bg-main': '#F9F7F4', /* App Background */
+        '--bg-drawer': '#F5F5F5', /* Card / Drawer Background */
+        '--bg-surface': '#F5F5F5',
+        '--text-main': '#2B2B2B', /* Primary Text */
+        '--text-secondary': '#6F6F6F', /* Secondary Text */
+        '--border-main': 'rgba(215,183,122,0.18)', /* gold-tinted border */
+        '--border-faint': 'rgba(215,183,122,0.08)',
+        '--accent': '#D7B77A', /* Accent gold */
+        '--accent-weak': 'rgba(215,183,122,0.08)',
+        '--icon-main': '#2B2B2B',
+        '--btn-bg': 'var(--bg-main)', /* Primary button background now matches app background */
+        '--btn-hover': 'rgba(16,24,32,0.06)',
+        '--logout-bg': '#D32F2F',
+        '--logout-color': '#FFFFFF',
+        '--font-weight-main': 400,
       };
 
   // Persist darkMode and apply theme variables to the document root so portals

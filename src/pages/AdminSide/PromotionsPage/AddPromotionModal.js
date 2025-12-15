@@ -23,7 +23,7 @@ export default function AddPromotionModal({ open, onClose, onCreated, defaultBra
   const [discountValue, setDiscountValue] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const branches = ['Vergara', 'Lawas', 'Lipa', 'Tanauan'];
+  const branches = ['Evangelista', 'Lawas', 'Lipa', 'Tanauan'];
 
   useEffect(() => {
     if (!open) return;

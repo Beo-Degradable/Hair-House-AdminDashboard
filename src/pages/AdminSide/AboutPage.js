@@ -4,10 +4,10 @@ import { AuthContext } from '../../context/AuthContext';
 import packageJson from '../../../package.json';
 
 const styles = {
-  page: { padding: 24, maxWidth: 960, margin: '0 auto', color: '#ddd', fontFamily: 'Inter, sans-serif' },
-  card: { marginBottom: 20, background: '#151515', padding: 16, borderRadius: 8, border: '1px solid rgba(255,255,255,0.03)' },
-  h1: { color: '#ffd54f', marginBottom: 12 },
-  small: { color: '#bbb', fontSize: 13 }
+  page: { padding: 24, maxWidth: 960, margin: '0 auto', color: 'var(--text-main)', fontFamily: 'Inter, sans-serif' },
+  card: { marginBottom: 20, background: 'var(--bg-surface, #151515)', padding: 16, borderRadius: 8, border: '1px solid var(--border-main, rgba(255,255,255,0.03))' },
+  h1: { color: 'var(--accent)', marginBottom: 12 },
+  small: { color: 'var(--text-secondary, #bbb)', fontSize: 13 }
 };
 
 export default function AboutPage() {

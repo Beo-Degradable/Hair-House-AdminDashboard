@@ -3,11 +3,11 @@ import React, { useContext } from 'react';
 import { AuthContext } from '../../context/AuthContext';
 
 const styles = {
-  page: { padding: 24, maxWidth: 960, margin: '0 auto', color: '#ddd', fontFamily: 'Inter, sans-serif' },
-  section: { marginBottom: 20, background: '#151515', padding: 16, borderRadius: 8, border: '1px solid rgba(255,255,255,0.03)' },
-  h1: { color: '#ffd54f' },
-  h2: { color: '#ffd54f', marginBottom: 8 },
-  code: { background: '#0f0f0f', padding: 8, borderRadius: 6 }
+  page: { padding: 24, maxWidth: 960, margin: '0 auto', color: 'var(--text-main)', fontFamily: 'Inter, sans-serif' },
+  section: { marginBottom: 20, background: 'var(--bg-surface, #151515)', padding: 16, borderRadius: 8, border: '1px solid var(--border-main, rgba(255,255,255,0.03))' },
+  h1: { color: 'var(--accent)' },
+  h2: { color: 'var(--accent)', marginBottom: 8 },
+  code: { background: 'var(--bg-drawer, #0f0f0f)', padding: 8, borderRadius: 6 }
 };
 
 // Component: Admin help & support reference

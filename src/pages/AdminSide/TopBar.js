@@ -109,6 +109,7 @@ const TopBar = ({ onLogout, darkMode, setDarkMode, settingsOpen, setSettingsOpen
   const [showProfileMenu, setShowProfileMenu] = useState(false); // deprecated; dropdown removed
   const profileBtnRef = useRef(null); // deprecated
   const profileMenuRef = useRef(null); // deprecated
+  const [profileMenuPos, setProfileMenuPos] = useState({ top: 56, left: 0, minWidth: 200 });
   const [showNav, setShowNav] = useState(false);
   const [showMore, setShowMore] = useState(false);
   const moreBtnRef = useRef(null);
@@ -539,6 +540,62 @@ useEffect(() => {
     return () => window.removeEventListener('mousedown', onDown);
   }, [showMore]);
 
+  // Profile menu: close on outside click / escape and compute popup position
+  useEffect(() => {
+    if (!showProfileMenu) return undefined;
+    const onDown = (e) => {
+      if (profileMenuRef.current && profileBtnRef.current && !profileMenuRef.current.contains(e.target) && !profileBtnRef.current.contains(e.target)) {
+        setShowProfileMenu(false);
+      }
+    };
+    const onKey = (e) => { if (e.key === 'Escape') setShowProfileMenu(false); };
+    window.addEventListener('mousedown', onDown);
+    window.addEventListener('keydown', onKey);
+
+    // compute position
+    try {
+      const btn = profileBtnRef.current;
+      if (btn && btn.getBoundingClientRect) {
+        const r = btn.getBoundingClientRect();
+        const minW = Math.max(180, Math.round(r.width));
+        const viewportW = window.innerWidth || document.documentElement.clientWidth || 1024;
+        // Prefer to align the menu's left to the button's left, but if that overflows
+        // shift it so the menu stays within the viewport. Also prefer right-align
+        // under the avatar if needed.
+        let left = Math.round(r.left + window.scrollX);
+        const rightEdge = left + minW;
+        const margin = 8;
+        if (rightEdge > viewportW - margin) {
+          // try aligning menu's right edge with button's right edge
+          left = Math.round(r.right + window.scrollX - minW);
+        }
+        if (left + minW > viewportW - margin) left = Math.max(margin, viewportW - minW - margin);
+        if (left < margin) left = margin;
+        setProfileMenuPos({ top: Math.max(margin, Math.round(r.bottom + window.scrollY + 6)), left, minWidth: minW });
+      }
+    } catch (e) {}
+
+    const onResize = () => {
+      try {
+        const btn = profileBtnRef.current;
+        if (btn && btn.getBoundingClientRect) {
+          const r = btn.getBoundingClientRect();
+          const minW = Math.max(180, Math.round(r.width));
+          const viewportW = window.innerWidth || document.documentElement.clientWidth || 1024;
+          let left = Math.round(r.left + window.scrollX);
+          const margin = 8;
+          if (left + minW > viewportW - margin) left = Math.round(r.right + window.scrollX - minW);
+          if (left + minW > viewportW - margin) left = Math.max(margin, viewportW - minW - margin);
+          if (left < margin) left = margin;
+          setProfileMenuPos({ top: Math.max(margin, Math.round(r.bottom + window.scrollY + 6)), left, minWidth: minW });
+        }
+      } catch (e) {}
+    };
+    window.addEventListener('resize', onResize);
+
+    return () => { window.removeEventListener('mousedown', onDown); window.removeEventListener('keydown', onKey); window.removeEventListener('resize', onResize); };
+  }, [showProfileMenu]);
+
   // Close search dropdown on outside click
   useEffect(() => {
     if (!showSearch) return;
@@ -765,7 +822,7 @@ useEffect(() => {
           fontWeight: "var(--font-weight-main)",
           fontFamily: 'inherit',
           transition: "background 0.3s, color 0.3s, font-weight 0.3s",
-          borderBottom: '1px solid var(--border-faint, rgba(201,184,106,0.08))'
+          borderBottom: 'none'
         }}
       >
         {/* Use theme variables rather than forcing white so topbar adapts to light/dark themes */}
@@ -814,7 +871,7 @@ useEffect(() => {
           </div>
         </div>
         {/* Right side: on Windows or wide screens show full nav here; otherwise leave it blank */}
-  <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginRight: 16 }}>
+  <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginRight: 40 }}>
           {/* Topbar: keep only notifications and profile avatar */}
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginRight: 6 }}>
             {/* Quick search: desktop only (hidden on mobile) */}
@@ -826,7 +883,7 @@ useEffect(() => {
                   width: searchBarWidth,
                   transition: 'width 0.22s ease',
                   borderRadius: 8,
-                  background: 'var(--bg-drawer)',
+                  background: 'var(--bg-surface)',
                   border: '1px solid ' + fadedGold,
                   boxShadow: showSearch ? '0 6px 18px rgba(0,0,0,0.08)' : 'none',
                   padding: '4px 6px'
@@ -853,7 +910,7 @@ useEffect(() => {
                   width: searchBarWidth,
                   zIndex: 1402,
                   borderRadius: 8,
-                  background: 'var(--bg-drawer)',
+                  background: 'var(--bg-surface)',
                   border: '1px solid ' + fadedGold,
                   boxShadow: '0 10px 30px rgba(0,0,0,0.08)',
                   overflow: 'hidden',
@@ -922,10 +979,15 @@ useEffect(() => {
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <button
                 ref={profileBtnRef}
-                onClick={(e) => { if (e.altKey || e.ctrlKey) { showAvatarDebug(); return; } safeNavigate('/account-settings'); }}
+                onClick={(e) => {
+                  if (e.altKey || e.ctrlKey) { showAvatarDebug(); return; }
+                  setShowProfileMenu(s => !s);
+                }}
+                aria-expanded={showProfileMenu}
+                aria-haspopup="true"
                 style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', display: 'flex', alignItems: 'center' }}
-                title={fullEmail || fullName || 'Account Settings'}
-                aria-label={fullEmail || fullName || 'Account Settings'}
+                title={fullEmail || fullName || 'Account'}
+                aria-label={fullEmail || fullName || 'Account'}
               >
                 <div
                   title={fullName || 'Profile'}
@@ -936,16 +998,54 @@ useEffect(() => {
                 </div>
               </button>
 
-              <button onClick={() => safeNavigate('/account-settings')} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', textAlign: 'left' }} title={fullName} aria-label={fullName}>
+              <button onClick={() => setShowProfileMenu(s => !s)} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', textAlign: 'left' }} title={fullName} aria-label={fullName}>
                 {viewportWidth >= 900 && (
                   <span style={{ color: 'currentColor', fontWeight: 400, fontSize: 14, maxWidth: 220, display: 'inline-block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{nameToDisplay}</span>
                 )}
               </button>
             </div>
+            
           </div>
         </div>
       </div>
       {/* Drawer + overlay rendered into document.body via portal so it's not affected by page transforms/scrolling */}
+      {/* Profile dropdown rendered into document.body via portal */}
+      {showProfileMenu && typeof document !== 'undefined' && createPortal(
+        <div ref={profileMenuRef} role="menu" aria-label="Account menu" style={{ position: 'fixed', zIndex: 1500, top: profileMenuPos.top + 'px', left: profileMenuPos.left + 'px' }}>
+          <div style={{ minWidth: profileMenuPos.minWidth || 200, background: 'var(--bg-drawer)', border: '1px solid ' + fadedGold, borderRadius: 8, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', overflow: 'hidden' }}>
+            <button onClick={() => { setShowProfileMenu(false); safeNavigate('/account-settings'); }} style={{ display: 'flex', gap: 8, alignItems: 'center', width: '100%', padding: '10px 12px', border: 'none', background: 'transparent', textAlign: 'left', cursor: 'pointer', color: 'var(--text-main, #fff)' }} role="menuitem">Account Settings</button>
+            <button onClick={() => { setShowProfileMenu(false); safeNavigate('/about'); }} style={{ display: 'flex', gap: 8, alignItems: 'center', width: '100%', padding: '10px 12px', border: 'none', background: 'transparent', textAlign: 'left', cursor: 'pointer', color: 'var(--text-main, #fff)' }} role="menuitem">About</button>
+            <button onClick={() => { setShowProfileMenu(false); safeNavigate('/help'); }} style={{ display: 'flex', gap: 8, alignItems: 'center', width: '100%', padding: '10px 12px', border: 'none', background: 'transparent', textAlign: 'left', cursor: 'pointer', color: 'var(--text-main, #fff)' }} role="menuitem">Help</button>
+            <div style={{ height: 1, background: 'var(--border-faint)', margin: '6px 0' }} />
+            <div style={{ padding: '10px 12px' }}>
+              <button
+                onClick={() => { setShowProfileMenu(false); if (onLogout) onLogout(); }}
+                role="menuitem"
+                style={{
+                  width: '100%',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 8,
+                  padding: '10px 12px',
+                  borderRadius: 8,
+                  background: 'var(--logout-bg, #d32f2f)',
+                  color: 'var(--logout-color, #ffffff)',
+                  border: '1px solid var(--logout-bg, #d32f2f)',
+                  cursor: 'pointer',
+                  fontWeight: 700,
+                  textAlign: 'center'
+                }}
+              >
+                Logout
+              </button>
+            </div>
+          </div>
+        </div>
+      , document.body)}
+
+      {/* profile menu position & outside-click handling implemented with useEffect above */}
+
       {typeof document !== 'undefined' && createPortal(
         <>
           {drawerOpen && (
@@ -1000,6 +1100,7 @@ useEffect(() => {
             <div aria-hidden style={{ width: '86%', height: 1, background: 'var(--border-faint)', borderRadius: 1, margin: '8px auto 6px' }} />
           </div>
         )}
+        {/* (Logout removed from top-of-drawer per request) */}
         {/* Render primary navigation from topbar here (vertical list) */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, padding: denseSidebar && isWide ? '8px 6px' : '0 8px', alignItems: denseSidebar && isWide ? 'center' : 'stretch' }}>
           {navButtons.map((btn) => {
@@ -1068,27 +1169,7 @@ useEffect(() => {
               </div>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center' }}>
-            <button
-              onClick={() => { setDrawerOpen(false); if (onLogout) onLogout(); }}
-              style={{
-                background: 'var(--logout-bg, #d32f2f)',
-                color: 'var(--logout-color, #ffffff)',
-                border: '1px solid var(--logout-bg, #d32f2f)',
-                padding: '6px 12px',
-                borderRadius: 8,
-                fontWeight: 700,
-                fontSize: 13,
-                cursor: 'pointer'
-              }}
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{ marginRight: 6 }}>
-                <path d="M16 17v1a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v1" stroke="currentColor" strokeWidth="1.5" fill="none"/>
-                <path d="M21 12H9m0 0l3-3m-3 3l3 3" stroke="currentColor" strokeWidth="1.5" fill="none"/>
-              </svg>
-              Logout
-            </button>
-          </div>
+          
           </div>
         )}
           {/* Duplicate footer removed; single footer above is used for account + logout */}

@@ -82,7 +82,7 @@ export default function DurationClock({ value = 30, onChange = () => {} }) {
           border: '2px solid #c79a26',
           background: '#000',
           color: '#c79a26',
-          fontFamily: 'monospace, monospace',
+          fontFamily: 'var(--font-family, Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif)',
           fontSize: 18,
           boxSizing: 'border-box'
         }}

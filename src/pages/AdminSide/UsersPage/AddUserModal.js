@@ -233,7 +233,7 @@ If you want, I can add a small admin script to the repo that will create the use
                 <label style={{ display: 'block', fontSize: 12 }}>Branch</label>
                 <select value={branchName} onChange={e => setBranchName(e.target.value)} style={{ width: '80%', padding: 8, background: 'var(--bg-drawer)', border: '1px solid var(--border-main)', color: 'var(--text-main)' }}>
                   <option value="">Select branch</option>
-                  <option value="Vergara">Vergara</option>
+                  <option value="Evangelista">Evangelista</option>
                   <option value="Lawas">Lawas</option>
                   <option value="Lipa">Lipa</option>
                   <option value="Tanauan">Tanauan</option>
@@ -290,12 +290,12 @@ If you want, I can add a small admin script to the repo that will create the use
           {role === 'stylist' ? (
             <div style={{ marginTop: 16 }}>
               <label style={{ display: 'block', fontSize: 12, marginBottom: 8 }}>Specialized Services</label>
-              <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+                <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
                 <select value={selectedServiceToAdd} onChange={e => setSelectedServiceToAdd(e.target.value)} style={{ flex: 1, padding: 8, background: 'var(--surface)', border: '1px solid var(--border-main)', color: 'var(--text-primary)' }}>
                   <option value="">Select service to add</option>
                   {services.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                 </select>
-                <button type="button" onClick={handleAddService} style={{ padding: '8px 12px', background: 'var(--accent)', color: 'white', border: 'none', borderRadius: 4 }}>Add</button>
+                <button type="button" onClick={handleAddService} style={{ padding: '8px 12px', background: 'var(--accent)', color: 'var(--accent-foreground)', border: 'none', borderRadius: 4 }}>Add</button>
               </div>
               <div style={{ border: '1px solid var(--border-main)', padding: 8, minHeight: 50, background: 'var(--surface)' }}>
                 {specializedServices.length === 0 ? (
@@ -303,9 +303,9 @@ If you want, I can add a small admin script to the repo that will create the use
                 ) : (
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                     {specializedServices.map(s => (
-                      <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'var(--accent)', color: 'white', padding: '4px 8px', borderRadius: 4 }}>
+                      <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'var(--accent)', color: 'var(--accent-foreground)', padding: '4px 8px', borderRadius: 4 }}>
                         <span>{s.name}</span>
-                        <button type="button" onClick={() => handleRemoveService(s.id)} style={{ background: 'transparent', border: 'none', color: 'white', cursor: 'pointer', fontSize: 12 }}>×</button>
+                        <button type="button" onClick={() => handleRemoveService(s.id)} style={{ background: 'transparent', border: 'none', color: 'var(--accent-foreground)', cursor: 'pointer', fontSize: 12 }}>×</button>
                       </div>
                     ))}
                   </div>

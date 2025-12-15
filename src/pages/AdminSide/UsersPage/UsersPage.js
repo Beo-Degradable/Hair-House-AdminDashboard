@@ -8,6 +8,7 @@ import { httpsCallable } from 'firebase/functions';
 import { logHistory } from '../../../utils/historyLogger';
 import { sanitizeForSearch } from '../../../utils/validators';
 import AddUserModal from './AddUserModal';
+import UpdateUserModal from './UpdateUserModal';
 import { AuthContext } from '../../../context/AuthContext';
 import useMediaQuery from '../../../hooks/useMediaQuery';
 
@@ -17,6 +18,8 @@ const UsersPage = () => {
   const [query, setQuery] = useState('');
   const [addOpen, setAddOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
+  const [updateOpen, setUpdateOpen] = useState(false);
+  const [updateUser, setUpdateUser] = useState(null);
   const [highlightedId, setHighlightedId] = useState(null);
   const [initialRole, setInitialRole] = useState(null);
   const [editingUser, setEditingUser] = useState(null);
@@ -133,7 +136,7 @@ const UsersPage = () => {
                           {addRole ? (
                             <button
                               onClick={() => { setAddOpen(true); setInitialRole(addRole); }}
-                              style={{ padding: '8px 12px', borderRadius: 8, background: 'transparent', color: '#fbfbfb', border: '1px solid rgba(184,136,11,0.35)', cursor: 'pointer' }}
+                              style={{ padding: '8px 12px', borderRadius: 8, background: 'transparent', color: 'var(--text-main)', border: '1px solid rgba(184,136,11,0.35)', cursor: 'pointer' }}
                             >
                               {addRole === 'admin' ? 'Add Admin' : addRole === 'stylist' ? 'Add Stylist' : 'Add'}
                             </button>
@@ -164,16 +167,11 @@ const UsersPage = () => {
                               <div style={{ color: 'var(--text-secondary)', fontSize: 13 }}>{u.email}</div>
                               <div style={{ color: 'var(--text-secondary)', fontSize: 13 }}>{u.role}{u.role === 'stylist' && u.branchName ? ` • ${u.branchName}` : ''}</div>
                               <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-                                {/* Only allow editing of stylists (admins cannot edit other admins here) */}
-                                {currentRole === 'admin' && u.role === 'stylist' ? (
-                                  <button onClick={() => { setEditingUser(u); setEditOpen(true); }} className="btn" style={{ padding: '6px 8px' }}>Update</button>
-                                ) : null}
-                                {/* Only show Disable/Delete for admin or stylist accounts, not plain users */}
-                                {((u.role || 'user').toLowerCase() !== 'user') ? (
-                                  <>
-                                    <button onClick={() => handleAuthAction(u.id, 'disable')} className="btn" style={{ padding: '6px 8px' }}>Disable</button>
-                                    <button onClick={() => handleDelete(u.id)} className="btn btn-danger" style={{ padding: '6px 8px' }}>Delete</button>
-                                  </>
+                                {/* Stylists get Update modal; Admins get Remove (delete) action */}
+                                {((u.role || 'user').toLowerCase() === 'stylist') ? (
+                                  <button onClick={() => { setUpdateUser(u); setUpdateOpen(true); }} className="btn">Update</button>
+                                ) : ((u.role || 'user').toLowerCase() === 'admin') ? (
+                                  <button onClick={() => handleDelete(u.id)} className="btn btn-danger">Remove</button>
                                 ) : null}
                               </div>
                             </div>
@@ -206,6 +204,11 @@ const UsersPage = () => {
         onClose={() => { setAddOpen(false); setEditOpen(false); setInitialRole(null); setEditingUser(null); }}
         initialRole={initialRole}
         editingUser={editingUser}
+      />
+      <UpdateUserModal
+        open={updateOpen}
+        user={updateUser}
+        onClose={() => { setUpdateOpen(false); setUpdateUser(null); }}
       />
     </div>
   );

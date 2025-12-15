@@ -79,11 +79,12 @@ const ServicePage = () => {
 
   // Branch definitions: map branch name -> allowed service types
   const BRANCH_MAP = {
-    'Evangelista': ['hair', 'nails', 'skin'],
+    'Evangelista': ['hair', 'nails', 'skin', 'lashes'],
     'Lawas': ['hair', 'nails'],
-    'Lipa': ['hair', 'nails', 'skin'],
+    'Lipa': ['hair', 'nails', 'skin', 'lashes'],
     'Tanauan': ['hair', 'nails']
   };
+
 
   const filtered = services.filter(s => {
     const matchesQuery = (s.name || '').toLowerCase().includes(query.toLowerCase());
@@ -117,7 +118,7 @@ const ServicePage = () => {
   };
 
   return (
-    <div style={{ padding: '0px 12px', fontFamily: 'system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif', color: '#fbfbfb' }}>
+    <div style={{ padding: '0px 12px', fontFamily: 'system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif', color: 'var(--text-main)' }}>
       {loading ? <div style={{ marginBottom: 12 }}>Loading…</div> : null}
 
       {/* Branch selector buttons (horizontal) */}
@@ -126,7 +127,7 @@ const ServicePage = () => {
           const isAll = b === 'All branches';
           const key = isAll ? '' : b;
           const isActive = isAll ? (selectedBranch === '') : (selectedBranch === b);
-          return (
+              return (
             <button
               key={b}
               onClick={() => setSelectedBranch(isAll ? '' : b)}
@@ -134,7 +135,7 @@ const ServicePage = () => {
                 padding: '8px 12px',
                 borderRadius: 8,
                 background: isActive ? 'rgba(184,136,11,0.12)' : 'transparent',
-                color: '#fbfbfb',
+                color: 'var(--text-main)',
                 border: `1px solid ${isActive ? 'rgba(184,136,11,0.45)' : 'rgba(184,136,11,0.35)'}`,
                 fontWeight: 600,
                 cursor: 'pointer'
@@ -158,9 +159,10 @@ const ServicePage = () => {
           const hairList = byType('hair');
           const nailsList = byType('nail');
           const skinList = byType('skin');
+          const lashesList = byType('lash');
 
           // remaining others
-          const consumed = new Set([...hairList.map(s => s.id), ...nailsList.map(s => s.id), ...skinList.map(s => s.id)]);
+          const consumed = new Set([...hairList.map(s => s.id), ...nailsList.map(s => s.id), ...skinList.map(s => s.id), ...lashesList.map(s => s.id)]);
           const others = filtered.filter(s => !consumed.has(s.id));
 
           const renderSection = (title, list, addType, alwaysShow=false) => {
@@ -179,7 +181,7 @@ const ServicePage = () => {
                     <h3 style={{ margin: 0 }}>{title}</h3>
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
                         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                          <button onClick={() => { setAddFixedType(addType || ''); setAddOpen(true); }} style={{ padding: '8px 12px', borderRadius: 8, background: 'transparent', color: '#fbfbfb', border: '1px solid rgba(184,136,11,0.35)', cursor: 'pointer' }}>Add Service</button>
+                          <button onClick={() => { setAddFixedType(addType || ''); setAddOpen(true); }} style={{ padding: '8px 12px', borderRadius: 8, background: 'transparent', color: 'var(--text-main)', border: '1px solid rgba(184,136,11,0.35)', cursor: 'pointer' }}>Add Service</button>
                           {/* See-more removed per request: no toggle shown on any breakpoint */}
                         </div>
                         {addType ? (
@@ -216,7 +218,7 @@ const ServicePage = () => {
                           </div>
                           <div style={{ color: 'var(--text-secondary)', fontSize: 13 }}>{formatDuration(s)} {s.price != null ? `• ${formatPeso(s.price)}` : ''}</div>
                           <div style={{ display: 'flex', gap: 8, marginTop: 'auto' }}>
-                            <button onClick={() => { setEditingId(s.id); setEditOpen(true); }} style={{ padding: '6px 8px', background: 'transparent', color: '#fbfbfb', border: '1px solid rgba(184,136,11,0.35)', borderRadius: 6, cursor: 'pointer' }}>Edit</button>
+                            <button onClick={() => { setEditingId(s.id); setEditOpen(true); }} style={{ padding: '6px 8px', background: 'transparent', color: 'var(--text-main)', border: '1px solid rgba(184,136,11,0.35)', borderRadius: 6, cursor: 'pointer' }}>Edit</button>
                             <button onClick={() => handleDelete(s.id)} className="btn btn-danger" style={{ padding: '6px 8px' }}>Delete</button>
                           </div>
                         </div>
@@ -232,6 +234,7 @@ const ServicePage = () => {
             <>
               {renderSection('Hair Services', hairList, 'hair', true)}
               {renderSection('Nail & Hand Care', nailsList, 'nails', true)}
+              {renderSection('Eyelash Services', lashesList, 'lashes', (selectedBranch === '' || (BRANCH_MAP[selectedBranch] || []).includes('lashes')))}
               {renderSection('Skin Services', skinList, 'skin', (selectedBranch === '' || (BRANCH_MAP[selectedBranch] || []).includes('skin')))}
               {others.length ? renderSection('Other Services', others, '') : null}
             </>

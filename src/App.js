@@ -20,6 +20,7 @@ import HelpPage from "./pages/AdminSide/HelpPage";
 import AboutPage from "./pages/AdminSide/AboutPage";
 import AdminAppointmentPage from "./pages/AdminSide/AppointmentPage/AppointmentPage";
 import ProductPage from "./pages/AdminSide/ProductPage/ProductPage";
+import AllOrdersPage from "./pages/AdminSide/ProductPage/AllOrdersPage";
 import ServicePage from "./pages/AdminSide/ServicePage/ServicePage";
 import ServiceTypePage from "./pages/AdminSide/ServicePage/ServiceTypePage";
 import PromotionsPage from "./pages/AdminSide/PromotionsPage/PromotionsPage";
@@ -62,6 +63,7 @@ function App() {
           <Route path="/notifications" element={<AdminDashboard onLogout={() => setRole("")} page={<NotificationsPage />} />} />
           <Route path="/appointments" element={<AdminDashboard onLogout={() => setRole("") } page={<AdminAppointmentPage />} />} />
           <Route path="/products" element={<AdminDashboard onLogout={() => setRole("")} page={<ProductPage />} />} />
+          <Route path="/products/all" element={<AdminDashboard onLogout={() => setRole("")} page={<AllOrdersPage />} />} />
           <Route path="/services" element={<AdminDashboard onLogout={() => setRole("")} page={<ServicePage />} />} />
           <Route path="/services/type/:type" element={<AdminDashboard onLogout={() => setRole("")} page={<ServiceTypePage />} />} />
           <Route path="/promotions" element={<AdminDashboard onLogout={() => setRole("")} page={<PromotionsPage />} />} />

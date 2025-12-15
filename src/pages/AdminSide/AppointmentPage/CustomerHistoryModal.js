@@ -44,7 +44,9 @@ export default function CustomerHistoryModal({ open = false, onClose = () => {} 
 			id: a.id,
 			when: a.startTime?.toDate ? a.startTime.toDate() : (a.startTime ? new Date(a.startTime) : null),
 			end: a.endTime?.toDate ? a.endTime.toDate() : (a.endTime ? new Date(a.endTime) : null),
-			serviceName: a.serviceName,
+			serviceName: (
+				a.serviceName || a.service || (Array.isArray(a.services) && a.services.length ? a.services.map(s => (s && (s.name || s.serviceName || s.title))).filter(Boolean).join(', ') : null)
+			),
 			stylistName: a.stylistName,
 			status: (String(a.status || '').toLowerCase() === 'done' ? 'completed' : String(a.status || '').toLowerCase()),
 			source: 'current',
@@ -61,7 +63,11 @@ export default function CustomerHistoryModal({ open = false, onClose = () => {} 
 			id: h.id,
 			when: h.after?.startTime?.toDate ? h.after.startTime.toDate() : (h.before?.startTime?.toDate ? h.before.startTime.toDate() : null),
 			end: h.after?.endTime?.toDate ? h.after.endTime.toDate() : (h.before?.endTime?.toDate ? h.before.endTime.toDate() : null),
-			serviceName: h.after?.serviceName || h.before?.serviceName,
+			serviceName: (
+				h.after?.serviceName || h.before?.serviceName || h.after?.service || h.before?.service ||
+				( Array.isArray(h.after?.services) && h.after.services.length ? h.after.services.map(s => (s && (s.name || s.serviceName || s.title))).filter(Boolean).join(', ') :
+				  ( Array.isArray(h.before?.services) && h.before.services.length ? h.before.services.map(s => (s && (s.name || s.serviceName || s.title))).filter(Boolean).join(', ') : null ) )
+			),
 			stylistName: h.after?.stylistName || h.before?.stylistName,
 			status: (String(h.after?.status || h.before?.status || h.action || '').toLowerCase() === 'done' ? 'completed' : String(h.after?.status || h.before?.status || h.action || '').toLowerCase()),
 			action: h.action,

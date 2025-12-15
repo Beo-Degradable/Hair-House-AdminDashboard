@@ -10,7 +10,7 @@ import { collection, onSnapshot, query, where, orderBy, updateDoc, doc } from 'f
 export default function PromotionsPage() {
   // Static branches as requested
   const branches = useMemo(() => ([
-    { id: 'B001', name: 'Vergara' },
+    { id: 'B001', name: 'Evangelista' },
     { id: 'B002', name: 'Lawas' },
     { id: 'B003', name: 'Lipa' },
     { id: 'B004', name: 'Tanauan' },
