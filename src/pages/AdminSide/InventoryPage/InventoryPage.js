@@ -12,6 +12,7 @@ import { sanitizeForSearch } from '../../../utils/validators';
 import { adjustInventoryRecord } from '../../../utils/inventoryActions';
 import InventoryModal from './InventoryModal';
 import AddInventoryModal from './AddInventoryModal';
+import EditInventoryModal from './EditInventoryModal';
 import InventoryHistory from '../InventoryHistory';
 
 const InventoryRow = ({ it, qty }) => {
@@ -37,6 +38,8 @@ const InventoryPage = () => {
   const [editingRawId, setEditingRawId] = useState(null);
   const [editRawValue, setEditRawValue] = useState('');
   const [editingRawLoading, setEditingRawLoading] = useState(false);
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editModalTarget, setEditModalTarget] = useState(null);
   const defaultBranchMap = [
     { id: 'B001', name: 'Evangelista' },
     { id: 'B002', name: 'Lawas' },
@@ -391,6 +394,8 @@ const InventoryPage = () => {
                             )
                           )}
 
+                          {/* Edit (open modal) */}
+                          <button onClick={() => { setEditingRawId(null); setEditingId(null); setEditingLoading(false); setEditRawValue(''); setEditValue(''); setEditModalOpen(true); setEditModalTarget(pid); }} style={{ padding: '6px 10px', borderRadius: 6 }}>Edit</button>
                           {/* Delete */}
                           <button onClick={async () => {
                             const confirmMsg = selectedBranch ? `Delete inventory records for "${it.name}" in ${selectedBranch}? This cannot be undone.` : `Delete all inventory documents for "${it.name}"? This cannot be undone.`;
@@ -551,6 +556,7 @@ const InventoryPage = () => {
 
   <InventoryModal open={modalOpen} onClose={() => setModalOpen(false)} onAdded={() => { refresh && refresh(); setModalOpen(false); }} />
   <AddInventoryModal products={items} branches={branches} open={addInvOpen} onClose={() => setAddInvOpen(false)} onAdded={() => { refresh && refresh(); setAddInvOpen(false); }} />
+  <EditInventoryModal open={editModalOpen} targetId={editModalTarget} onClose={() => { setEditModalOpen(false); setEditModalTarget(null); refresh && refresh(); }} onSaved={() => { refresh && refresh(); }} />
   {showHistory && (
       <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.35)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 9999 }}>
       <div style={{ width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', padding: 12 }}>

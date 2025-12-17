@@ -6,6 +6,7 @@ import { parseDurationToMinutes, formatMinutes } from '../../../utils/time';
 import { getAuth } from 'firebase/auth';
 import { db } from '../../../firebase';
 import { logHistory } from '../../../utils/historyLogger';
+import uploadToCloudinary from '../../../utils/cloudinary';
 
 const EditServiceModal = ({ open, id, onClose }) => {
   const [loading, setLoading] = useState(false);
@@ -14,7 +15,8 @@ const EditServiceModal = ({ open, id, onClose }) => {
   const [localHours, setLocalHours] = useState(0);
   const [localMinutesVal, setLocalMinutesVal] = useState(0);
   const [durationInput, setDurationInput] = useState('01:00');
-  const [imageBase64, setImageBase64] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
+  const [imageFile, setImageFile] = useState(null);
   const [imageName, setImageName] = useState('');
   const fileInputRef = useRef(null);
 
@@ -37,7 +39,7 @@ const EditServiceModal = ({ open, id, onClose }) => {
         setDurationInput(`${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`);
         // load existing image if present
         if (loaded.imageUrl) {
-          setImageBase64(loaded.imageUrl);
+          setImagePreview(loaded.imageUrl);
           setImageName((loaded.imageName || '').toString());
         }
       }
@@ -96,15 +98,30 @@ const EditServiceModal = ({ open, id, onClose }) => {
 
       const cleanName = sanitizeName(data.name || '');
 
+      // determine image URL: upload if a new file was selected, otherwise keep existing remote URL
+      let finalImageUrl = null;
+      let finalPublicId = null;
+      if (imageFile) {
+        try {
+          const uploadResp = await uploadToCloudinary(imageFile, { cloudName: 'dlgq64gr6', uploadPreset: 'default' });
+          finalImageUrl = uploadResp?.secure_url || uploadResp?.url || null;
+          finalPublicId = uploadResp?.public_id || null;
+          try { if (imagePreview && imagePreview.startsWith('blob:')) URL.revokeObjectURL(imagePreview); } catch(_){}
+        } catch (ux) { console.warn('Cloudinary upload failed', ux); finalImageUrl = null; finalPublicId = null; }
+      } else if (imagePreview && !imagePreview.startsWith('blob:')) {
+        // imagePreview is already a remote URL
+        finalImageUrl = imagePreview;
+      }
+
       await updateDoc(ref, {
         name: cleanName,
         price: Number(data.price) || 0,
         duration: parsedForSave.total ? `${parsedForSave.total}m` : (data.duration || ''),
         durationMinutes: Number(parsedForSave.total) || 0,
         type: data.type,
-        imageBase64: imageBase64 || null,
-        imageUrl: imageBase64 || null,
-        imageName: imageName || null
+        imageUrl: finalImageUrl || null,
+        imageName: imageName || null,
+        imagePublicId: finalPublicId || null
       });
 
       // History record
@@ -112,7 +129,7 @@ const EditServiceModal = ({ open, id, onClose }) => {
         const auth = getAuth();
         const user = auth.currentUser;
         const actor = user ? { uid: user.uid, email: user.email } : null;
-          try { await logHistory({ action: 'update', collection: 'services', docId: id, before, after: { name: cleanName, price: Number(data.price) || 0, duration: parsedForSave.total ? `${parsedForSave.total}m` : (data.duration || ''), durationMinutes: Number(parsedForSave.total) || 0, type: data.type, imageUrl: imageBase64 || null } }); } catch (e) { console.warn('history logger failed', e); }
+          try { await logHistory({ action: 'update', collection: 'services', docId: id, before, after: { name: cleanName, price: Number(data.price) || 0, duration: parsedForSave.total ? `${parsedForSave.total}m` : (data.duration || ''), durationMinutes: Number(parsedForSave.total) || 0, type: data.type, imageUrl: finalImageUrl || null } }); } catch (e) { console.warn('history logger failed', e); }
       } catch (hx) { console.warn('Failed to write history for service update', hx); }
       onClose();
     } catch (err) {
@@ -170,18 +187,19 @@ const EditServiceModal = ({ open, id, onClose }) => {
                   const f = e.target.files && e.target.files[0];
                   if (!f) return;
                   setImageName(f.name || '');
-                  const reader = new FileReader();
-                  reader.onload = () => { const result = reader.result; setImageBase64(result); };
-                  reader.onerror = () => { console.error('Failed to read image file'); setImageBase64(null); };
-                  reader.readAsDataURL(f);
+                  setImageFile(f);
+                  try {
+                    const obj = URL.createObjectURL(f);
+                    setImagePreview(obj);
+                  } catch (ex) { setImagePreview(null); }
                 }} style={{ width: '100%' }} />
-                {imageBase64 ? (
+                {imagePreview ? (
                   <div style={{ marginTop: 8 }}>
                     <div style={{ fontSize: 12, color: 'var(--muted)' }}>{imageName}</div>
-                    <img src={imageBase64} alt="preview" style={{ marginTop: 6, maxWidth: 240, maxHeight: 160, objectFit: 'cover', borderRadius: 6 }} />
+                    <img src={imagePreview} alt="preview" style={{ marginTop: 6, maxWidth: 240, maxHeight: 160, objectFit: 'cover', borderRadius: 6 }} />
                     <div style={{ marginTop: 8, display: 'flex', gap: 8 }}>
                       <button type="button" onClick={() => { if (fileInputRef.current) fileInputRef.current.click(); }} style={{ padding: '6px 10px', background: 'transparent', border: '1px solid rgba(184,136,11,0.35)', color: 'var(--text-main)', cursor: 'pointer', borderRadius: 6 }}>Reupload</button>
-                      <button type="button" onClick={() => { setImageBase64(null); setImageName(''); if (fileInputRef.current) fileInputRef.current.value = null; }} style={{ padding: '6px 10px', background: 'transparent', border: '1px solid rgba(255,255,255,0.06)', color: 'var(--text-main)', cursor: 'pointer', borderRadius: 6 }}>Remove</button>
+                      <button type="button" onClick={() => { try { if (imagePreview && imagePreview.startsWith('blob:')) URL.revokeObjectURL(imagePreview); } catch(_){}; setImagePreview(null); setImageFile(null); setImageName(''); if (fileInputRef.current) fileInputRef.current.value = null; }} style={{ padding: '6px 10px', background: 'transparent', border: '1px solid rgba(255,255,255,0.06)', color: 'var(--text-main)', cursor: 'pointer', borderRadius: 6 }}>Remove</button>
                     </div>
                   </div>
                 ) : null}

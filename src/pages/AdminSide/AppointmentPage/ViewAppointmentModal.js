@@ -18,7 +18,23 @@ export default function ViewAppointmentModal({ appointment, open = false, onClos
         <div style={{ background: 'var(--bg-surface, #2b2b2b)', color: 'var(--text-main)', padding: 20, borderRadius: 8, width: 'min(520px, 96%)', border: '1px solid var(--border-main, rgba(197,155,22,0.18))', boxSizing: 'border-box' }} onClick={(e) => e.stopPropagation()}>
           <h3 style={{ marginTop: 0 }}>Appointment details</h3>
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-            <div style={{ flex: '1 1 60%' }}><strong>Client:</strong> {appointment.clientName} {appointment.clientEmail ? `(${appointment.clientEmail})` : ''}</div>
+            <div style={{ flex: '1 1 60%' }}>
+              <strong>Client:</strong> {appointment.clientName} {appointment.clientEmail ? `(${appointment.clientEmail})` : ''}
+              {/* Render payment/appointment proof image if available */}
+              {(() => {
+                const pay = appointment.payment || {};
+                const src = pay.proofUrl || pay.proof || pay.proofImage || pay.receiptUrl || pay.receiptImage || appointment.proofUrl || appointment.proof || appointment.proofImage || appointment.receiptUrl || null;
+                if (!src) return null;
+                return (
+                  <div style={{ marginTop: 8 }}>
+                    <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6 }}>Payment proof</div>
+                    <div>
+                      <img src={src} alt="payment proof" style={{ maxWidth: 220, maxHeight: 160, objectFit: 'cover', borderRadius: 6, border: '1px solid var(--border-main)' }} />
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
             <div style={{ flex: '1 1 40%', textAlign: 'right' }}>
               <div style={{ display: 'inline-block', padding: '6px 10px', borderRadius: 12, background: paymentConfirmed ? '#16a34a' : (amountPaid > 0 || reservationPaid ? '#f59e0b' : '#ef4444'), color: '#fff', fontWeight: 700 }}>{paymentStatusLabel}</div>
             </div>

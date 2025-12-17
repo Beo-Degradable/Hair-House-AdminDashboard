@@ -6,6 +6,7 @@ import { parseDurationToMinutes, formatMinutes } from '../../../utils/time';
 import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../../firebase';
 import { logHistory } from '../../../utils/historyLogger';
+import uploadToCloudinary from '../../../utils/cloudinary';
 
 const AddServiceModal = ({ open, onClose, fixedType = '' }) => {
   const [name, setName] = useState('');
@@ -16,7 +17,8 @@ const AddServiceModal = ({ open, onClose, fixedType = '' }) => {
   const [localMinutesVal, setLocalMinutesVal] = useState(30 % 60);
   const [durationInput, setDurationInput] = useState('00:30');
   const [type, setType] = useState(fixedType || 'hair');
-  const [imageBase64, setImageBase64] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
+  const [imageFile, setImageFile] = useState(null);
   const [imageName, setImageName] = useState('');
   const fileInputRef = useRef(null);
   // tags removed per request
@@ -57,14 +59,32 @@ const AddServiceModal = ({ open, onClose, fixedType = '' }) => {
       };
       const parsedForSave = parseDurationString(durationInput);
       const cleanName = sanitizeName(name || '');
+      // if a local file was selected, upload it to Cloudinary
+      let uploadedImageUrl = null;
+      let uploadedPublicId = null;
+      if (imageFile) {
+        try {
+          const uploadResp = await uploadToCloudinary(imageFile, { cloudName: 'dlgq64gr6', uploadPreset: 'default' });
+          uploadedImageUrl = uploadResp?.secure_url || uploadResp?.url || null;
+          uploadedPublicId = uploadResp?.public_id || null;
+          // revoke preview blob URL if present
+          try { if (imagePreview && imagePreview.startsWith('blob:')) URL.revokeObjectURL(imagePreview); } catch (_) {}
+        } catch (ux) {
+          console.warn('Cloudinary upload failed', ux);
+          uploadedImageUrl = null;
+          uploadedPublicId = null;
+        }
+      }
+
       const ref = await addDoc(collection(db, 'services'), {
         name: cleanName,
         price: Number(price) || 0,
         duration: parsedForSave.total ? `${parsedForSave.total}m` : '',
         durationMinutes: Number(parsedForSave.total) || 0,
         type,
-        imageBase64: imageBase64 || null,
-        imageUrl: imageBase64 || null,
+        imageUrl: uploadedImageUrl || null,
+        imageName: imageName || null,
+        imagePublicId: uploadedPublicId || null,
         createdAt: serverTimestamp()
       });
 
@@ -150,24 +170,25 @@ const AddServiceModal = ({ open, onClose, fixedType = '' }) => {
                 const f = e.target.files && e.target.files[0];
                 if (!f) return;
                 setImageName(f.name || '');
-                const reader = new FileReader();
-                reader.onload = () => {
-                  const result = reader.result;
-                  setImageBase64(result);
-                };
-                reader.onerror = () => {
-                  console.error('Failed to read image file');
-                  setImageBase64(null);
-                };
-                reader.readAsDataURL(f);
+                // keep the File for upload and use an object URL for preview
+                setImageFile(f);
+                try {
+                  const obj = URL.createObjectURL(f);
+                  setImagePreview(obj);
+                } catch (ex) {
+                  setImagePreview(null);
+                }
               }} style={{ width: '100%' }} />
-              {imageBase64 ? (
+              {imagePreview ? (
                 <div style={{ marginTop: 8 }}>
                   <div style={{ fontSize: 12, color: 'var(--muted)' }}>{imageName}</div>
-                  <img src={imageBase64} alt="preview" style={{ marginTop: 6, maxWidth: 240, maxHeight: 160, objectFit: 'cover', borderRadius: 6 }} />
+                  <img src={imagePreview} alt="preview" style={{ marginTop: 6, maxWidth: 240, maxHeight: 160, objectFit: 'cover', borderRadius: 6 }} />
                     <div style={{ marginTop: 8, display: 'flex', gap: 8 }}>
                       <button type="button" onClick={() => { if (fileInputRef.current) fileInputRef.current.click(); }} style={{ padding: '6px 10px', background: 'transparent', border: '1px solid var(--border-main)', color: 'var(--text-main)', cursor: 'pointer', borderRadius: 6 }}>Reupload</button>
-                      <button type="button" onClick={() => { setImageBase64(null); setImageName(''); if (fileInputRef.current) fileInputRef.current.value = null; }} style={{ padding: '6px 10px', background: 'transparent', border: '1px solid var(--border-main)', color: 'var(--text-main)', cursor: 'pointer', borderRadius: 6 }}>Remove</button>
+                      <button type="button" onClick={() => { 
+                        // cleanup object URL
+                        try { if (imagePreview && imagePreview.startsWith('blob:')) URL.revokeObjectURL(imagePreview); } catch(_){}
+                        setImagePreview(null); setImageFile(null); setImageName(''); if (fileInputRef.current) fileInputRef.current.value = null; }} style={{ padding: '6px 10px', background: 'transparent', border: '1px solid var(--border-main)', color: 'var(--text-main)', cursor: 'pointer', borderRadius: 6 }}>Remove</button>
                     </div>
                 </div>
               ) : null}

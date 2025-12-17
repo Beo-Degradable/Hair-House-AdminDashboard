@@ -4,6 +4,8 @@ import { collection, addDoc, serverTimestamp, doc, updateDoc, getDoc } from 'fir
 import { db } from '../../../firebase';
 import ValidatedInput from '../../../components/ValidatedInput';
 import { validateForm, sanitizeName } from '../../../utils/validators';
+import uploadToCloudinary from '../../../utils/cloudinary';
+import { logHistory } from '../../../utils/historyLogger';
 
 const AddInventoryModal = ({ open, onClose, onAdded, products = [], branches = [] }) => {
   const branchMap = [
@@ -22,7 +24,10 @@ const AddInventoryModal = ({ open, onClose, onAdded, products = [], branches = [
   const [name, setName] = useState('');
   const [brand, setBrand] = useState('');
   const [category, setCategory] = useState('');
-  const [cost, setCost] = useState('');
+  // image upload replaces cost field
+  const [imageFile, setImageFile] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
+  const [imageName, setImageName] = useState('');
   const [price, setPrice] = useState('');
   const [unit, setUnit] = useState('');
   const [loading, setLoading] = useState(false);
@@ -41,6 +46,17 @@ const AddInventoryModal = ({ open, onClose, onAdded, products = [], branches = [
       const brandInput = sanitizeName(brand || '') || null;
       const categoryInput = sanitizeName(category || '') || null;
       if (!nameInput) throw new Error('Enter product name');
+      // upload image once (if provided) and attach to inventory/product records
+      let uploadedImageUrl = null;
+      let uploadedPublicId = null;
+      if (imageFile) {
+        try {
+          const resp = await uploadToCloudinary(imageFile, { cloudName: 'dlgq64gr6', uploadPreset: 'default' });
+          uploadedImageUrl = resp?.secure_url || resp?.url || null;
+          uploadedPublicId = resp?.public_id || null;
+        } catch (ux) { console.warn('Cloudinary upload failed', ux); }
+      }
+
       // build list of writes for branches with quantities
       const createdIds = [];
       for (const b of branchMap) {
@@ -52,7 +68,8 @@ const AddInventoryModal = ({ open, onClose, onAdded, products = [], branches = [
             brand: brandInput,
             category: categoryInput,
             unit: unit || null,
-            cost: cost ? Number(cost) : null,
+            imageUrl: uploadedImageUrl || null,
+            imagePublicId: uploadedPublicId || null,
             price: price ? Number(price) : null,
             branchId: b.id,
             branchName: b.name,
@@ -84,7 +101,8 @@ const AddInventoryModal = ({ open, onClose, onAdded, products = [], branches = [
             brand: brand || existing.brand || null,
             category: category || existing.category || null,
             unit: unit || existing.unit || null,
-            cost: cost ? Number(cost) : (existing.cost || null),
+            imageUrl: uploadedImageUrl || existing.imageUrl || null,
+            imagePublicId: uploadedPublicId || existing.imagePublicId || null,
             price: price ? Number(price) : (existing.price || null),
             quantity: newQty,
             lastUpdated: serverTimestamp(),
@@ -103,7 +121,8 @@ const AddInventoryModal = ({ open, onClose, onAdded, products = [], branches = [
             brand: brand || null,
             category: category || null,
             unit: unit || null,
-            cost: cost ? Number(cost) : null,
+            imageUrl: uploadedImageUrl || null,
+            imagePublicId: uploadedPublicId || null,
             price: price ? Number(price) : null,
             quantity: totalAdded,
             createdAt: serverTimestamp(),
@@ -167,8 +186,26 @@ const AddInventoryModal = ({ open, onClose, onAdded, products = [], branches = [
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 8 }}>
             <div>
-              <label style={{ display: 'block', fontSize: 12 }}>Cost</label>
-              <ValidatedInput type='number' integer={false} value={cost} onChange={v => setCost(v)} style={{ width: '80%', padding: 8, background: 'var(--surface)', border: '1px solid var(--border-main)', color: 'var(--text-primary)' }} />
+              <label style={{ display: 'block', fontSize: 12 }}>Image (optional)</label>
+              <input type="file" accept="image/*" onChange={(e) => {
+                const f = e.target.files && e.target.files[0];
+                if (!f) return;
+                setImageName(f.name || '');
+                setImageFile(f);
+                try {
+                  const obj = URL.createObjectURL(f);
+                  setImagePreview(obj);
+                } catch (ex) { setImagePreview(null); }
+              }} style={{ width: '80%' }} />
+              {imagePreview ? (
+                <div style={{ marginTop: 8 }}>
+                  <div style={{ fontSize: 12, color: 'var(--muted)' }}>{imageName}</div>
+                  <img src={imagePreview} alt="preview" style={{ marginTop: 6, maxWidth: 240, maxHeight: 160, objectFit: 'cover', borderRadius: 6 }} />
+                  <div style={{ marginTop: 8, display: 'flex', gap: 8 }}>
+                    <button type="button" onClick={() => { if (imagePreview && imagePreview.startsWith('blob:')) try { URL.revokeObjectURL(imagePreview); } catch(_){}; setImagePreview(null); setImageFile(null); setImageName(''); }} style={{ padding: '6px 10px', background: 'transparent', border: '1px solid var(--border-main)', color: 'var(--text-primary)', cursor: 'pointer', borderRadius: 6 }}>Remove</button>
+                  </div>
+                </div>
+              ) : null}
             </div>
             <div>
               <label style={{ display: 'block', fontSize: 12 }}>Price</label>

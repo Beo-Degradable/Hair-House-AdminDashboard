@@ -83,21 +83,30 @@ export default function PromotionsPage() {
 
   return (
     <div style={{ padding: '8px 16px 24px' }}>
+      <style>{`
+        .promotions-filters{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+        .promotions-filters .filter-item{min-width:140px}
+        @media (max-width:600px){
+          .promotions-filters .filter-item{min-width:100px;flex:1 1 48%}
+          .promotions-filters{gap:6px}
+          .promotions-filters .filter-item select{height:36px}
+        }
+      `}</style>
       {/* Containered layout: promotions inside a bordered card with header + Add button */}
       <div style={{ border: '1px solid var(--border-main)', borderRadius: 10, padding: 12, background: 'transparent' }}>
         <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 12, marginBottom: 6 }}>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            <div style={{ minWidth: 150 }}>
+          <div className="promotions-filters" style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <div className="filter-item" style={{ minWidth: 150 }}>
               <BranchSelector size="sm" branches={branches} value={selectedBranch} onChange={setSelectedBranch} />
             </div>
-            <div style={{ minWidth: 140 }}>
+            <div className="filter-item" style={{ minWidth: 140 }}>
               <select value={promoType} onChange={(e) => setPromoType(e.target.value)} style={{ padding: 6, borderRadius: 6, width: '100%', fontSize: 13, height: 32 }}>
                 <option value="">All types</option>
                 <option value="Flash Offers">Flash Offers</option>
                 <option value="Promo">Promo</option>
               </select>
             </div>
-            <div>
+            <div className="filter-item">
               <button onClick={() => setShowAdd(true)} style={addBtnStyle}>Add</button>
             </div>
           </div>

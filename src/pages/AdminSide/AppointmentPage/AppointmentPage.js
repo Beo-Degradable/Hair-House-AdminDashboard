@@ -25,7 +25,7 @@ function safeDateToISO(d) {
 }
 
 export default function AppointmentPage() {
-  const { appointments = [], loading, error, createAppointment, updateAppointment, deleteAppointment } = useAppointments();
+  const { appointments = [], loading, error, createAppointment, updateAppointment } = useAppointments();
 
   
 
@@ -155,15 +155,7 @@ export default function AppointmentPage() {
     }
   };
 
-  const handleDelete = async (a) => {
-    if (!window.confirm('Delete this appointment?')) return;
-    try {
-      await deleteAppointment(a.id, a);
-    } catch (e) {
-      console.error(e);
-      alert('Delete failed');
-    }
-  };
+  // Deletion of appointments removed per request: function intentionally omitted.
 
   const handleApproveCancel = async (a) => {
     if (!window.confirm('Approve cancel request for this appointment?')) return;
@@ -239,8 +231,7 @@ export default function AppointmentPage() {
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
           <button className="btn" onClick={() => handleView(a)}>View</button>
           <button className="btn btn-ghost" onClick={() => handleEdit(a)}>Edit</button>
-          {/* History button removed as redundant */}
-          <button className="btn btn-danger" onClick={() => handleDelete(a)}>Delete</button>
+          {/* Delete action removed */}
           {a.status === 'cancel_requested' && (
             <button className="btn btn-warning" onClick={() => handleApproveCancel(a)}>Approve Cancel</button>
           )}

@@ -129,12 +129,19 @@ const AdminDashboard = ({ onLogout, page }) => {
               }
             `}</style>
 
+              <style>{`
+                /* Hide the low-stock box on small screens to reduce clutter */
+                @media (max-width:720px){
+                  .lowstock-box{display:none}
+                }
+              `}</style>
+
             {/* hook into appointments to compute unique customers */}
             <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
               <div style={{ flex: 1 }}>
                 <KpiWithAppointments />
               </div>
-              <div style={{ width: 320 }}>
+              <div className="lowstock-box" style={{ width: 320 }}>
                 <LowStockBox items={items} inventoryMap={inventoryMap} invLoading={invLoading} />
               </div>
             </div>
@@ -158,6 +165,24 @@ function KpiWithAppointments() {
   const { appointments, loading } = useAppointments();
   const navigate = useNavigate();
   const totalAppointments = appointments ? appointments.length : 0;
+  const { items: productItems } = useInventory();
+  const [payments, setPayments] = useState([]);
+
+  useEffect(() => {
+    try {
+      const col = collection(db, 'payments');
+      const unsub = onSnapshot(col, snap => {
+        const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        setPayments(list);
+      }, err => {
+        console.warn('payments listener failed', err);
+        setPayments([]);
+      });
+      return () => unsub();
+    } catch (e) {
+      setPayments([]);
+    }
+  }, []);
 
   // compute total revenue from appointments with status 'completed'
   const totalRevenue = React.useMemo(() => {
@@ -193,6 +218,33 @@ function KpiWithAppointments() {
     return sum;
   }, [appointments]);
 
+  // include delivered product profits from payments
+  const paymentsProfit = React.useMemo(() => {
+    if (!payments || !payments.length) return 0;
+    const isDelivered = (s) => {
+      if (!s) return false;
+      const st = s.toString().toLowerCase();
+      return ['delivered', 'completed', 'received'].includes(st);
+    };
+    let pSum = 0;
+    for (const p of payments) {
+      if (!isDelivered(p.status || p.state)) continue;
+      const itemsArr = Array.isArray(p.items) ? p.items : (p.purchasedProducts || []);
+      for (const it of itemsArr) {
+        const qty = Number(it.quantity || it.qty || 1) || 0;
+        const price = Number(it.price || it.unitPrice || 0) || 0;
+        let prod = null;
+        if (it.productId && productItems && productItems.length) prod = productItems.find(x => x.id === it.productId);
+        if (!prod && it.name && productItems && productItems.length) prod = productItems.find(x => ((x.name || x.title || '') + '').toString() === (it.name + '').toString());
+        const cost = prod ? Number(prod.cost || prod.unitCost || prod.purchaseCost || 0) : Number(it.cost || it.unitCost || 0);
+        pSum += (price - (cost || 0)) * qty;
+      }
+    }
+    return pSum;
+  }, [payments, productItems]);
+
+  const totalRevenueWithProducts = (totalRevenue || 0) + (paymentsProfit || 0);
+
   // appointments that fall on today's date (local)
   const appointmentsToday = React.useMemo(() => {
     if (!appointments || !appointments.length) return 0;
@@ -226,7 +278,7 @@ function KpiWithAppointments() {
 
         <div className="kpi-card">
           <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6 }}>Total Revenue</div>
-          <div className="kpi-value">{loading ? '…' : formatCurrency(totalRevenue)}</div>
+          <div className="kpi-value">{loading ? '…' : formatCurrency(totalRevenueWithProducts)}</div>
         </div>
 
       <div className="kpi-card">
@@ -786,8 +838,8 @@ function DashboardSummary({ branch }) {
                 {stylistsForDisplay.map(s => (
                   <li key={s.id} style={{ display: 'flex', gap: 10, alignItems: 'center', padding: '8px 6px', borderBottom: '1px dashed rgba(0,0,0,0.04)' }}>
                     <div style={{ width: 36, height: 36, borderRadius: 18, overflow: 'hidden', background: 'rgba(0,0,0,0.04)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      {s.photoURL || s.imageUrl || s.imageBase64 ? (
-                        <img src={s.photoURL || s.imageUrl || s.imageBase64} alt="a" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      {s.photoURL || s.imageUrl || s.image ? (
+                        <img src={s.photoURL || s.imageUrl || s.image} alt="a" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                       ) : (
                         <div style={{ width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, color: 'var(--text-secondary)' }}>{(s.name || (s.displayName||'')).slice(0,1).toUpperCase()}</div>
                       )}

@@ -213,7 +213,7 @@ const ServicePage = () => {
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <div style={{ fontWeight: 700 }}>{(!isDesktop && s.name && s.name.length > 25) ? `${s.name.slice(0,22)}...` : s.name}</div>
                             <div style={{ width: 36, height: 36, borderRadius: 36, overflow: 'hidden', background: '#ddd', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                              {(s.imageUrl || s.imageBase64 || s.image) ? <img src={(s.imageUrl || s.imageBase64 || s.image)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <div style={{ fontSize: 12, color: '#333' }}>Img</div>}
+                              {(s.imageUrl || s.image) ? <img src={(s.imageUrl || s.image)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <div style={{ fontSize: 12, color: '#333' }}>Img</div>}
                             </div>
                           </div>
                           <div style={{ color: 'var(--text-secondary)', fontSize: 13 }}>{formatDuration(s)} {s.price != null ? `• ${formatPeso(s.price)}` : ''}</div>
